@@ -53,7 +53,7 @@ def command(args,cwd=None):
     return result.stdout.decode('utf-8',errors='replace').strip()
 
 
-def collect_environment(comfy_root,checkpoint,cache_root,ffmpeg,ffprobe,cli,model_config):
+def collect_environment(comfy_root,checkpoint,cache_root,ffmpeg,ffprobe,cli,model_config,template_id=tpl.TEMPLATE_ID):
     root=Path(comfy_root).resolve()
     with urlopen('http://127.0.0.1:8188/system_stats',timeout=15) as r: stats=json.load(r)
     require(any('RTX 3060' in d.get('name','') for d in stats['devices']),'SERVER_HARDWARE_MISMATCH')
@@ -74,7 +74,7 @@ def collect_environment(comfy_root,checkpoint,cache_root,ffmpeg,ffprobe,cli,mode
             roots += [(Path(entry['base_path'])/p).resolve() for p in entry['checkpoints'].splitlines() if p]
     require(len(roots)==1 and Path(checkpoint['path']).parent==roots[0], 'AMBIGUOUS_CHECKPOINT_RESOLUTION')
     modules={}
-    for node in tpl.template().values():
+    for node in tpl.template(template_id).values():
         cls=node['class_type']; module=nodes[cls].get('python_module')
         require(isinstance(module,str) and (module=='nodes' or module.startswith('comfy_extras.')),'UNVERIFIED_CUSTOM_NODE')
         path=root/(module.replace('.', '/')+'.py')
@@ -91,7 +91,7 @@ def collect_environment(comfy_root,checkpoint,cache_root,ffmpeg,ffprobe,cli,mode
         comfyui=dict(root=str(root),version=stats['system']['comfyui_version'],commit=commit,tracked_dirty=bool(dirty),tracked_status_sha256=sha(dirty.encode())),
         checkpoint=checkpoint,node_implementations=modules,custom_nodes_used=[],
         model_configuration=dict(path=str(config),sha256=sha(raw),checkpoint_resolution='single active default checkpoint root'),
-        template_id=tpl.TEMPLATE_ID,template_sha256=sha(canonical(tpl.template())),runtime=runtime,
+        template_id=template_id,template_sha256=sha(canonical(tpl.template(template_id))),runtime=runtime,
         ffmpeg_version=command([ffmpeg,'-version']).splitlines()[0],ffprobe_version=command([ffprobe,'-version']).splitlines()[0],
         official_cli=dict(path=str(Path(cli).resolve()),executable_sha256=sha(Path(cli).read_bytes()),
             version=command([Path(cli).parent/'python.exe','-c','import importlib.metadata; print(importlib.metadata.version("comfy-cli"))'])),

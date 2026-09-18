@@ -87,17 +87,18 @@ class RenderService:
         def action(db):
             revision = self.store._revision(db, project_id, revision_id)
             snapshot = self.store._snapshot(db, revision)
+            template_id=tpl.TEXT_TEMPLATE_ID if snapshot.get('generation',{}).get('abc_planning') else tpl.TEMPLATE_ID
             rid = new_id('render')
             params = tpl.parameters(snapshot, 'audio/JRMusic/' + rid)
             fragments = {name: json.loads((tpl.ROOT / 'fragments' / (name + '.json')).read_text(encoding='utf-8'))
-                         for name in ('yue2_model', 'yue2_render')}
+                         for name in ('yue2_model', 'yue2_text_render' if template_id==tpl.TEXT_TEMPLATE_ID else 'yue2_render')}
             job = dict(schema_version='render/1', render_request_id=new_id('render_request'), render_id=rid,
                 project_id=project_id, revision_id=revision_id, snapshot_sha256=revision['snapshot_sha256'],
                 abc_sha256=revision['abc_sha256'], brief_sha256=sha(canonical(snapshot['brief'])),
                 lyrics_sha256=sha(snapshot['brief']['lyrics'].encode('utf-8')), seed_decimal=str(params['seed']),
-                master_blend=None, template_id=tpl.TEMPLATE_ID, template_sha256=sha(canonical(tpl.template())),
+                master_blend=None, template_id=template_id, template_sha256=sha(canonical(tpl.template(template_id))),
                 fragments_sha256={n: sha(canonical(f)) for n, f in fragments.items()},
-                source_bundle_sha256=self.store._blob(db, canonical(dict(blueprint=tpl.blueprint(params), fragments=fragments))),
+                source_bundle_sha256=self.store._blob(db, canonical(dict(blueprint=tpl.blueprint(params,template_id), fragments=fragments))),
                 parameters=params, server=server, checkpoint=dict(name=params['checkpoint'], sha256=None, verification='filename_only'),
                 state='created', generation=0, prompt_id=None, workflow_sha256=None, claim_id=None,
                 created_at=now(), updated_at=now(), created_by=actor, evidence=[], assets=[],
@@ -138,7 +139,7 @@ class RenderService:
         def action(db, job):
             require(job['state'] in ('created', 'prepared'), 'RENDER_STATE_CONFLICT')
             require(isinstance(preflight, dict) and preflight.get('valid') is True and preflight.get('server_id') == job['server']['server_id'], 'PREFLIGHT_REQUIRED')
-            graph = tpl.validate(workflow, job['parameters'], job['template_sha256'])
+            graph = tpl.validate(workflow, job['parameters'], job['template_sha256'],job['template_id'])
             digest = sha(canonical(graph))
             require(preflight.get('workflow_sha256') == digest, 'PREFLIGHT_WORKFLOW_MISMATCH')
             require(job['workflow_sha256'] in (None, digest), 'WORKFLOW_ALREADY_BOUND')
@@ -227,7 +228,11 @@ class RenderService:
                     job['last_issue'] = 'REMOTE_INTERRUPTED' if interrupted else 'REMOTE_EXECUTION_FAILED'
                 elif status.get('completed') is True and status.get('status_str') == 'success':
                     outputs = history.get('outputs', {})
-                    require(outputs.get('155', {}).get('text') == [job['parameters']['abc']], 'ECHOED_ABC_MISMATCH')
+                    if job['template_id']==tpl.TEXT_TEMPLATE_ID:
+                        planned=outputs.get('155',{}).get('text')
+                        require(isinstance(planned,list) and len(planned)==1 and isinstance(planned[0],str)
+                            and 0<len(planned[0].encode('utf-8'))<=1_000_000,'GENERATED_SCORE_MISSING')
+                    else:require(outputs.get('155', {}).get('text') == [job['parameters']['abc']], 'ECHOED_ABC_MISMATCH')
                     audio = outputs.get('152', {}).get('audio', [])
                     require(isinstance(audio, list) and len(audio) == 1, 'ARTIFACT_MISSING')
                     desc = audio[0]
@@ -291,6 +296,11 @@ class RenderService:
                 assets = [self.store.file_asset(db, project_id, job['revision_id'], staged, name, media, 'decoded_pcm_verified')
                           for staged, name, media in [(source, 'native.flac', 'audio/flac'), (wav, 'delivery.wav', 'audio/wav')]]
                 history = json.loads(db.execute('SELECT content FROM blobs WHERE hash=?', (job['history_sha256'],)).fetchone()[0])
+                if job['template_id']==tpl.TEXT_TEMPLATE_ID:
+                    planned=history.get('outputs',{}).get('155',{}).get('text',[])
+                    if isinstance(planned,list) and len(planned)==1 and isinstance(planned[0],str) and 0<len(planned[0].encode())<=1_000_000:
+                        with self.store.cas.stage(io.BytesIO(planned[0].encode('utf-8'))) as staged:
+                            assets.append(self.store.file_asset(db,project_id,job['revision_id'],staged,'generated-score.abc','text/plain','server_generated'))
                 manifest = dict(schema_version='render-manifest/1', render_id=render_id,
                     render_request_id=job['render_request_id'], revision_id=job['revision_id'], project_id=project_id,
                     snapshot_sha256=job['snapshot_sha256'], abc_sha256=job['abc_sha256'], brief_sha256=job['brief_sha256'],

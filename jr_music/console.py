@@ -174,6 +174,9 @@ def make_console(libraries, port=8767, agent_status=None):
                                     rid = revision['revision_id']
                                     value = store.get_revision(pid, rid)
                                     value['renders'] = producer.renders.list(pid, rid)
+                                    if value['snapshot'].get('generation'):
+                                        from .direct_generation import enrich
+                                        revisions.append(enrich(store,value));continue
                                     value['score'] = parse_abc(value['snapshot']['abc'].encode('utf-8'))
                                     value['lyric_navigation'] = lyric_navigation(value['score'], value['snapshot']['brief'].get('lyrics', ''))
                                     from . import score_lyrics
@@ -210,6 +213,22 @@ def make_console(libraries, port=8767, agent_status=None):
                                 raw,media,disposition=score_export.download(store,pid,parts[4],parts[5][6:])
                                 self.headers_out(200,media,len(raw),[('Content-Disposition',disposition)])
                                 self.wfile.write(raw);return
+                            elif len(parts)==5 and parts[3]=='generated-score' and method=='GET':
+                                asset,stream=store.open_asset(pid,parts[4])
+                                with stream:
+                                    require(asset['name']=='generated-score.abc' and asset['verification']=='server_generated','GENERATED_SCORE_REQUIRED')
+                                    raw=stream.read(1_000_001)
+                                require(len(raw)<=1_000_000,'INVALID_BODY_SIZE')
+                                self.headers_out(200,'text/plain; charset=utf-8',len(raw),[('Content-Disposition','attachment; filename="generated-score.abc"')])
+                                self.wfile.write(raw);return
+                            elif len(parts)==4 and parts[3]=='direct-generate' and method=='POST':
+                                from .direct_generation import start
+                                value=self.body(('style','lyrics','assigned_to','target_duration','seed','abc_planning','idempotency_key'),('mcp_alias','source_revision_id','expected_snapshot_sha256'))
+                                result=start(producer,pid,actor='producer',key=value.pop('idempotency_key'),**value)
+                            elif len(parts)==4 and parts[3]=='use-generated-score' and method=='POST':
+                                from .direct_generation import use_score
+                                value=self.body(('render_id','idempotency_key'))
+                                result=use_score(producer,pid,value['render_id'],actor='producer',key=value['idempotency_key'])
                             elif len(parts) == 5 and parts[3] == 'audio' and method == 'GET':
                                 self.media(store, pid, parts[4]); return
                             elif len(parts)==6 and parts[3]=='renders' and parts[5].startswith('quality'):
@@ -242,7 +261,7 @@ def make_console(libraries, port=8767, agent_status=None):
                                 analysis=audio_analysis.read(producer,pid,parts[4])
                                 result = analysis.get('transcription') or read_review(store, pid, parts[4])
                             elif len(parts) == 4 and parts[3] == 'creation-discuss' and method == 'POST':
-                                value = self.body(('assigned_to','instruction','target_duration','parent_command_id','idempotency_key'),('songcraft_selection','mcp_alias'))
+                                value = self.body(('assigned_to','instruction','target_duration','parent_command_id','idempotency_key'),('songcraft_selection','mcp_alias','creation_mode'))
                                 result = CreationService(producer).discuss(pid, actor='producer', key=value.pop('idempotency_key'), **value)
                             elif len(parts) == 4 and parts[3] == 'creation-confirm' and method == 'POST':
                                 value = self.body(('plan_command_id','expected_plan_sha256','idempotency_key'))

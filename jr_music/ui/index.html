@@ -91,6 +91,7 @@
                   <option value="300" selected>300 秒</option>
                 </select></label
               >
+                <label for="creationMode">初稿生成方式<select id="creationMode"><option value="style_lyrics">Agent 写词与 style → YuE2 规划旋律</option><option value="score">Agent 编写 ABC 与专业规格</option></select></label>
                 <label for="creationSongcraft">创作方法<select id="creationSongcraft"><option value="professional">专业编曲 + 作词 · jtydhr88（主要方法）</option></select></label>
                 <label for="creationMcp">生成服务器<select id="creationMcp"><option value="">使用此伙伴默认</option></select><small id="creationMcpStatus"></small></label>
                 <button id="creationMcpRefresh" type="button">读取 MCP 列表</button>
@@ -115,6 +116,21 @@
           </div>
         </div>
       </details>
+      <details id="directPanel" class="creation-panel" hidden>
+        <summary><span class="eyebrow">DIRECT / 已有风格与歌词</span><strong>Style＋歌词直接生成</strong></summary>
+        <p class="hint">原文直接交给 YuE2；由所选伙伴的 Comfy MCP 执行。开启 ABC planning 后，生成谱会随歌曲归档，供后续修改。</p>
+        <label for="directStyle">Style · 音乐与演唱风格</label><textarea id="directStyle" rows="3" maxlength="10000" placeholder="例如：Mandarin folk pop, warm female vocal, piano, short instrumental intro"></textarea>
+        <label for="directLyrics">歌词 · 可含 [Intro]、[Verse]、[Chorus] 等段落标签</label><textarea id="directLyrics" rows="8" maxlength="10000"></textarea>
+        <div class="creation-controls">
+          <label>执行伙伴<select id="directAgent"><option value="yinyue">银月</option><option value="xiaowu">小舞</option></select></label>
+          <label>生成服务器<select id="directMcp"><option value="">使用此伙伴默认</option></select><small id="directMcpStatus"></small></label>
+          <button id="directMcpRefresh" type="button">读取 MCP 列表</button><button id="directMcpDefault" type="button">设为此伙伴默认</button>
+          <label>时长上限（秒）<input id="directDuration" type="number" min="1" max="300" value="250"></label>
+          <label>随机种子<input id="directSeed" type="number" min="0" max="9007199254740991" value="0" step="1"></label>
+          <label><input id="directPlanning" type="checkbox" checked> ABC planning · 由 YuE2 规划旋律</label>
+          <button id="sendDirect" class="primary">直接生成试听 ↗</button>
+        </div><p id="directSource" class="hint"></p>
+      </details>
       <section class="head-strip">
         <span class="head-icon">◉</span>
         <div>
@@ -131,7 +147,7 @@
             <h2>候选试听</h2>
           </div>
           <div class="comparison-help">一次播放一个候选 · 保留各自试听位置</div>
-          <button id="addCandidate">导入候选</button>
+          <button id="openDirect">Style＋歌词直接生成</button><button id="addCandidate">导入候选</button>
         </div>
         <div id="compare" class="compare-grid"></div>
         <details id="versions">

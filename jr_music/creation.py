@@ -37,9 +37,10 @@ class CreationService:
             created_by='producer', created_at=now(), issue=None, provenance=None,
             target_duration=duration)
 
-    def discuss(self, project_id, assigned_to, instruction, target_duration, parent_command_id, *, actor, key, songcraft_selection='none', mcp_alias=None):
+    def discuss(self, project_id, assigned_to, instruction, target_duration, parent_command_id, *, actor, key, songcraft_selection='none', mcp_alias=None, creation_mode='score'):
         from . import songcraft
         songcraft.validate(songcraft_selection)
+        require(creation_mode in ('score','style_lyrics'),'INVALID_CREATION_MODE')
         require(actor == 'producer', 'PRODUCER_REQUIRED')
         require(self.producer.bridge and assigned_to in self.producer.bridge.bindings, 'HERMES_UNAVAILABLE')
         text(instruction, 4000)
@@ -48,12 +49,14 @@ class CreationService:
             instruction=instruction, target_duration=target_duration, parent_command_id=parent_command_id)
         if mcp_alias is not None:payload['mcp_alias']=mcp_alias
         if songcraft_selection!='none': payload['songcraft_selection']=songcraft_selection
+        if creation_mode!='score':payload['creation_mode']=creation_mode
         def action(db):
             self.store._project(db, project_id)
             parent = self.latest(db, project_id)
             require((parent['command_id'] if parent else None) == parent_command_id, 'STALE_CREATION_PLAN')
             require(not parent or parent['state'] in ('completed', 'needs_attention', 'cancelled'), 'CREATION_BUSY')
             command = self._command(project_id, assigned_to, 'plan', instruction, target_duration)
+            command['creation_mode']=creation_mode
             command['production_binding']=self.producer.bridge.selection(assigned_to,mcp_alias)
             if songcraft_selection!='none': command['songcraft']=songcraft.freeze(self.store,db,songcraft_selection)
             if songcraft_selection=='professional': command.pop('singing_guidance',None)
@@ -80,6 +83,7 @@ class CreationService:
             command = self._command(project_id, plan['assigned_to'], 'compose',
                 '根据已确认的创作方案生成原创首版并试听', plan['target_duration'])
             if plan.get('production_binding'):command['production_binding']=dict(plan['production_binding'])
+            command['creation_mode']=plan.get('creation_mode','score')
             if plan.get('songcraft'): command['songcraft']=dict(plan['songcraft'])
             if plan.get('singing_guidance'):command['singing_guidance']=dict(plan['singing_guidance'])
             else:command.pop('singing_guidance',None)
@@ -99,7 +103,7 @@ class CreationService:
                 history = self._conversation(db, command)
         from . import songcraft
         from .draft_repair import context
-        return dict(repair_context=context(self.store,command),songcraft_materials=songcraft.resolve(self.store,command),score_lyric_contract='score-lyrics/1' if command['kind']=='compose' else None,command={k:v for k,v in command.items() if k != 'conversation'}, conversation=history,
+        return dict(repair_context=context(self.store,command),songcraft_materials=songcraft.resolve(self.store,command),score_lyric_contract='score-lyrics/1' if command['kind']=='compose' and command.get('creation_mode')!='style_lyrics' else None,command={k:v for k,v in command.items() if k != 'conversation'}, conversation=history,
             project_title=self.store.get_project(command['project_id'])['title'])
 
     def propose(self, project_id, command_id, result, provenance, *, actor, format_check=None):
@@ -139,7 +143,19 @@ class CreationService:
             plan_content=dict(plan=plan, target_duration=command['target_duration'], seed=command['seed'])
             if command.get('songcraft'): plan_content['songcraft']=command['songcraft']
             if command.get('singing_guidance'):plan_content['singing_guidance']=command['singing_guidance']
+            if command.get('creation_mode')=='style_lyrics':plan_content['creation_mode']='style_lyrics'
             plan_sha = sha(canonical(plan_content))
+        elif command.get('creation_mode')=='style_lyrics':
+            require(set(result)=={'style','lyrics','summary'},'INVALID_CREATIVE_PROPOSAL')
+            text(result['summary'],1500)
+            brief=dict(style=result['style'],lyrics=result['lyrics'],checkpoint='yue2_3b_int8_convrot.safetensors',
+                seed=command['seed'],max_duration=command['target_duration'])
+            revision=self.store.add_revision(project_id,'',brief,result['summary'],actor=actor,key=command_id+'_original',
+                generation=dict(mode='style_lyrics',abc_planning=True))
+            revision_id=revision['revision_id']
+            require(self.producer.bridge is not None,'HERMES_UNAVAILABLE')
+            job=self.producer.bridge.prepare(project_id,revision_id,actor=actor,key=command_id,binding=command.get('production_binding'))
+            render_id=job['render_id'];meter_repairs=[];density=None
         else:
             from . import professional_skills
             base_fields=set(result)-({'production_specs'} if professional_skills.required(command) else set())

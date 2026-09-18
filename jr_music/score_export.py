@@ -25,7 +25,8 @@ TYPES = [('maxima',8),('long',4),('breve',2),('whole',1),('half',Fraction(1,2)),
 
 
 def prepare(source, mapping):
-    snapshot=source['snapshot'];abc=snapshot['abc'];score=parse_abc(abc.encode())
+    snapshot=source['snapshot'];require(not snapshot.get('generation'),'DIRECT_SCORE_NOT_INPUT')
+    abc=snapshot['abc'];score=parse_abc(abc.encode())
     require(not re.search(r'[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]',abc+snapshot['brief'].get('lyrics','')),'EXPORT_INVALID_TEXT')
     require(score['status']=='supported','EXPORT_SCORE_UNSUPPORTED')
     tempo=re.fullmatch(r'1/4=([1-9]\d*)',score['headers'].get('Q',''))

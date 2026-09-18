@@ -70,6 +70,7 @@ class ProducerService:
             and len(set(allowed_bar_ids)) == len(allowed_bar_ids) and len(allowed_bar_ids) <= 128, 'INVALID_EDIT_REGION')
         require(bool(allowed_bar_ids) if kind == 'pitch_edit' else allowed_bar_ids == [], 'INVALID_EDIT_REGION')
         source = self.store.get_revision(project_id, revision_id)
+        require(not source['snapshot'].get('generation') or kind=='render','DIRECT_SCORE_NOT_INPUT')
         if density_limits is not None:
             from .lyric_density import validate_limits
             validate_limits(density_limits)
@@ -152,6 +153,8 @@ class ProducerService:
             from .creation import CreationService
             return CreationService(self).packet(command)
         source = self.store.get_revision(project_id, command['source_revision_id'])
+        if source['snapshot'].get('generation') and command['kind']=='render':
+            return dict(command=command,source=source,score=None,songcraft_materials=None)
         from .professional_skills import read as read_specs
         source['production_specs']=read_specs(self.store,project_id,command['source_revision_id'])
         parsed = None
@@ -189,7 +192,7 @@ class ProducerService:
                         {**brief, 'max_duration':command['target_duration']},
                         f"仅调整生成时长上限：{brief['max_duration']:g} → {command['target_duration']:g} 秒；ABC、歌词、风格和种子保持原样",
                         parent_revision_id=revision_id, expected_parent_snapshot_sha256=command['source_snapshot_sha256'],
-                        actor=actor, key=command_id+'_duration')
+                        actor=actor, key=command_id+'_duration',generation=source['snapshot'].get('generation'))
                     revision_id = revision['revision_id']
         require(self.bridge is not None, 'HERMES_UNAVAILABLE')
         job = self.bridge.prepare(project_id, revision_id, actor=actor, key=command_id, binding=command.get('production_binding'))

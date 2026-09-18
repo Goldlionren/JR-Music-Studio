@@ -36,7 +36,7 @@ class LocalComfy:
 
     def cli_call(self, args, timeout=60):
         result = subprocess.run([self.cli, '--where', 'local', '--json', *args],
-            cwd=self.work_root, env={**os.environ, 'COMFY_LOCAL_URL': self.server['url']},
+            cwd=self.work_root, env={**os.environ, 'COMFY_LOCAL_URL': self.server['url'],'PYTHONUTF8':'1','PYTHONIOENCODING':'utf-8'},
             capture_output=True, timeout=timeout, check=False)
         try:
             value = json.loads(result.stdout.decode('utf-8-sig'))
@@ -104,7 +104,8 @@ class LocalComfy:
         job=self.renders.get(project_id,render_id)
         if job['schema_version'] in ('render/2', 'render/3', 'render/4'):
             require(self.environment_probe is not None,'ENVIRONMENT_PROBE_REQUIRED')
-            current=self.environment_probe()
+            from .render_template import TEMPLATE_ID
+            current=self.environment_probe() if job['template_id']==TEMPLATE_ID or job['schema_version']=='render/4' else self.environment_probe(template_id=job['template_id'])
             require(sha(canonical(current))==job['environment_sha256'],'RENDER_ENVIRONMENT_CHANGED')
 
     def reconcile(self, project_id, render_id):

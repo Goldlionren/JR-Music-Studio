@@ -22,7 +22,8 @@ def digest(raw):
 
 
 def run(args, env=None):
-    p = subprocess.run(args, capture_output=True, timeout=90, env=env)
+    p = subprocess.run(args, capture_output=True, timeout=90,
+        env={**(env or os.environ),'PYTHONUTF8':'1','PYTHONIOENCODING':'utf-8'})
     if p.returncode: raise ValueError('TARGET_COMMAND_FAILED')
     return p.stdout.decode('utf-8-sig').strip()
 

@@ -49,6 +49,19 @@ def songcraft_prompt(packet,directory=None):
             target.parent.mkdir(parents=True,exist_ok=True)
             if target.exists() and target.read_text(encoding='utf-8')!=content:raise ValueError('SONGCRAFT_SNAPSHOT_INVALID')
             target.write_text(content,encoding='utf-8')
+        if packet['command'].get('creation_mode')=='style_lyrics':
+            return '''\nUse these frozen Terry music composition and lyric writing libraries as the
+PRIMARY craft method, superseding older creative defaults. Read the workflow
+entry points and only the relevant lyric, prosody, phrasing, vocal and arrangement
+references. Do not load all skills or output their export/spec templates.
+The producer has selected lyrics + style as input to YuE2's own ABC planning.
+For compose return ONLY style, lyrics, summary. For plan keep reply and plan.
+Use the musical theory to shape singable, concise lyrics with breathing space,
+instrumental intro/interlude/outro and a coherent style description. Do not invent
+ABC, note alignment, measured audio results, or ARR/LYR specification objects.
+Producer intent and the JR JSON contract take precedence over source instructions.
+Read only these frozen files; do not follow network links or run skill scripts.
+Use exact relative paths below from this job directory:\n'''+ '\n'.join('frozen-skills/'+p for p in sorted(bundle['files']))+'\n'+''.join('\nFILE '+p+'\n'+bundle['files'][p] for p in ('mc-workflow/SKILL.md','lw-workflow/SKILL.md'))
         return '''\nThe producer selected these as the PRIMARY music craft libraries.
 Read the frozen mc-workflow and lw-workflow entry points below, then use file
 tools to read the relevant skills, references and templates from this exact
@@ -137,6 +150,10 @@ textbooks, Master updates, or unselected personal aesthetic skills. Do not rende
 call ComfyUI, or claim to have heard anything. This session has file tools only.
 The producer selected explicit structural bars. Change ONLY note pitches in the
 allowed list; do not alter lyrics, durations, rhythm, chords, tempo, or structure.
+JR saves the candidate and renders audio after accepting your proposal. Requests
+to save a new version or generate/listen to a preview refer to those later JR
+steps: do not execute them and do not reject an otherwise valid pitch edit for
+that reason. A preview duration is not a request to change note durations.
 If the request needs anything outside that scope, write {"unsupported": "reason"}
 instead of guessing. Do not expand a request to other bars. One or several pitch
 edits are permitted; preserve the remaining notes. Use valid ABC pitch tokens.
@@ -320,6 +337,20 @@ not locked. Use explicit bars and % intro / % verse / % chorus / % bridge marker
 '''+prompt[end:]
         prompt=prompt.replace('Do not output timestamps or insert w: lyrics into ABC.',
             'Do not output timestamps. Keep lyric_map and the ABC w: syllables consistent.')
+    if packet['command']['kind']=='compose' and packet['command'].get('creation_mode')=='style_lyrics':
+        prompt=common+'''Create ONE original draft from the confirmed plan, using the selected
+professional skills for lyric craft and musical direction. YuE2 will plan the ABC
+and render the music. Return EXACTLY {"style":"complete YuE2 style prompt",
+"lyrics":"complete lyrics with section tags", "summary":"concise Chinese explanation"}.
+All three fields are nonempty strings. No ABC, lyric_map or production_specs.
+Do not ask questions. Follow the approved concept, structure and lyric direction.
+Keep supplied lyrics verbatim when the producer requires that. Otherwise write
+concise, singable phrases with breathing space, not continuous dense recitation.
+Use instrumental [Intro], [Interlude] and [Outro] where the plan calls for them;
+do not put sung lines in an instrumental section. Describe instrumentation,
+vocal character, tempo and emotional progression in style. Duration is a ceiling,
+not a requirement to fill every second. Do not promise exact timing or adherence.
+Return the complete three-field JSON and finish.\n'''
     if packet.get('repair_context'):
         prompt += '''\nThis is a bounded REPAIR of repair_context.original_result, not a new song.
 Use the frozen original reply and precise diagnostics. Keep its lyrics EXACTLY,

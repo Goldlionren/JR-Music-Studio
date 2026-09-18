@@ -106,7 +106,12 @@ def put(store,db,revision,rows,actor,origin,inherited_from=None):
 
 
 def read(store,pid,rid):
-    source=store.get_revision(pid,rid);snapshot=source['snapshot'];score,notes,lookup=geometry(snapshot['abc']);lyric=lines(snapshot['brief']['lyrics'])
+    source=store.get_revision(pid,rid);snapshot=source['snapshot'];lyric=lines(snapshot['brief']['lyrics'])
+    if snapshot.get('generation'):
+        return dict(schema_version='score-lyrics/1',generation=0,origin=None,mapping_id=None,
+            items=[dict(l,mapping=None,bar_ids=[],start=None,end=None) for l in lyric],notes=[],rows=[],
+            unmapped_count=len(lyric),editable=False,source_abc_sha256=source['revision']['abc_sha256'])
+    score,notes,lookup=geometry(snapshot['abc'])
     with store.connect() as db:
         history=records(db,pid,rid);current=manifest(db,history[-1]) if history else None
     rows=[]

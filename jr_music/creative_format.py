@@ -32,6 +32,7 @@ def strict_loads(text):
 
 def expected_fields(command,lyric_contract=False):
     kind=command['kind']
+    if kind=='compose' and command.get('creation_mode')=='style_lyrics':return {'style','lyrics','summary'}
     fields={'reply','plan'} if kind=='plan' else {'abc','lyrics','summary'}
     if kind=='direction':
         fields={'abc','lyrics','style','summary'} if command['scope']['mode']=='song' else {'section_abc','section_lyrics','summary'}

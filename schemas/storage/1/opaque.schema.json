@@ -74,11 +74,26 @@
         },
         "abc": {
           "type": "string",
-          "minLength": 1,
           "maxLength": 1000000
         },
         "brief": {
           "$ref": "#/$defs/brief"
+        },
+        "generation": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "style_lyrics"
+            },
+            "abc_planning": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "mode",
+            "abc_planning"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -89,7 +104,30 @@
         "abc",
         "brief"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "generation"
+            ]
+          },
+          "then": {
+            "properties": {
+              "abc": {
+                "const": ""
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "abc": {
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ]
     },
     "revision": {
       "type": "object",

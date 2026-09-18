@@ -159,9 +159,10 @@ class Store:
             return project
         return self._operation(actor, key, dict(op='create_project', title=title), action)
 
-    def _insert_revision(self, db, project_id, abc, brief, summary, parent_revision_id, actor):
+    def _insert_revision(self, db, project_id, abc, brief, summary, parent_revision_id, actor, generation=None):
         snapshot = dict(schema_version='storage/1', kind='opaque_song_snapshot', project_id=project_id,
                         import_status='opaque_import', abc=abc, brief=brief)
+        if generation is not None:snapshot['generation']=generation
         snapshot_bytes = canonical(snapshot)
         if parent_revision_id:
             parent = self._revision(db, project_id, parent_revision_id)
@@ -187,30 +188,34 @@ class Store:
         return snapshot
 
     @staticmethod
-    def validate_revision(abc, brief, summary):
-        text(abc, 1_000_000)
+    def validate_revision(abc, brief, summary, generation=None):
+        if generation is None:text(abc, 1_000_000)
+        else:
+            require(isinstance(generation,dict) and set(generation)=={'mode','abc_planning'} and generation['mode']=='style_lyrics'
+                and type(generation['abc_planning']) is bool and abc=='','INVALID_DIRECT_INPUT')
         text(summary, 2000)
         require(isinstance(brief, dict) and set(brief) == {'style', 'lyrics', 'checkpoint', 'seed', 'max_duration'}, 'INVALID_BRIEF')
         for field in ('style', 'lyrics', 'checkpoint'):
             text(brief[field])
         require(type(brief['seed']) is int and 0 <= brief['seed'] < 2**64, 'INVALID_SEED')
         require(type(brief['max_duration']) in (int, float) and 0 < brief['max_duration'] <= MAX_DURATION_SECONDS, 'INVALID_DURATION')
-        require(re.search(r'^X:[ \t]*\S+', abc, re.M) and re.search(r'^K:[ \t]*\S+', abc, re.M), 'ABC_HEADERS_MISSING')
+        if generation is None:require(re.search(r'^X:[ \t]*\S+', abc, re.M) and re.search(r'^K:[ \t]*\S+', abc, re.M), 'ABC_HEADERS_MISSING')
 
     def add_revision(self, project_id, abc, brief, summary, *, parent_revision_id=None,
-                     expected_parent_snapshot_sha256=None, actor, key):
+                     expected_parent_snapshot_sha256=None, actor, key, generation=None):
         identifier(project_id)
-        self.validate_revision(abc, brief, summary)
+        self.validate_revision(abc, brief, summary, generation)
         # Raw import does not claim protected-edit validation; use apply_edit for that.
         require((parent_revision_id is None) == (expected_parent_snapshot_sha256 is None), 'STALE_BASE')
         payload = dict(op='add_revision', project_id=project_id, abc=abc, brief=brief, summary=summary,
                        parent_revision_id=parent_revision_id, expected_parent_snapshot_sha256=expected_parent_snapshot_sha256)
+        if generation is not None:payload['generation']=generation
         def action(db):
             self._project(db, project_id)
             if parent_revision_id is not None:
                 parent = self._revision(db, project_id, parent_revision_id)
                 require(parent['snapshot_sha256'] == expected_parent_snapshot_sha256, 'STALE_BASE')
-            return self._insert_revision(db, project_id, abc, brief, summary, parent_revision_id, actor)
+            return self._insert_revision(db, project_id, abc, brief, summary, parent_revision_id, actor, generation)
         return self._operation(actor, key, payload, action)
 
     def derive_score(self, project_id, revision_id, *, actor, key):

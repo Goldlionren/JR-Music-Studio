@@ -47,7 +47,10 @@
       "type": "null"
     },
     "template_id": {
-      "const": "yue2-fixed-score/1"
+      "enum": [
+        "yue2-fixed-score/1",
+        "yue2-text-planning/1"
+      ]
     },
     "template_sha256": {
       "type": "string",

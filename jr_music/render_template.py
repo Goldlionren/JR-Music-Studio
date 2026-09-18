@@ -11,6 +11,7 @@ from .store import canonical, sha, require
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_ID = 'yue2-fixed-score/1'
+TEXT_TEMPLATE_ID = 'yue2-text-planning/1'
 REFERENCE = ROOT / 'jr_music/resources/yue2-template.json'
 SLOTS = {'checkpoint': ('102', 'ckpt_name'), 'abc': ('157', 'value'), 'style': ('166', 'value'),
          'lyrics': ('167', 'value'), 'seed': ('165', 'seed'), 'max_duration': ('158', 'max_duration'),
@@ -30,8 +31,13 @@ def graph_only(workflow):
     return deepcopy(graph)
 
 
-def template():
+def template(template_id=TEMPLATE_ID):
+    require(template_id in (TEMPLATE_ID,TEXT_TEMPLATE_ID),'TEMPLATE_NOT_APPROVED')
     reference = graph_only(json.loads(REFERENCE.read_text(encoding='utf-8')))
+    if template_id==TEXT_TEMPLATE_ID:
+        reference['155']['inputs']['source']=['168',0]
+        reference['168']=dict(class_type='YuE2GenerateABC',inputs=dict(clip=['102',1],style=['166',0],lyrics=['167',0],seed=['165',0],
+            mode='full',max_abc_tokens=8192,temperature=0.7,top_p=0.9,top_k=30,repetition_penalty=1.005,penalty_window=100))
     for node, field in SLOTS.values():
         reference[node]['inputs'][field] = '<bound-parameter>'
     return reference
@@ -58,7 +64,10 @@ def remote_match(frozen,observed,*,allow_float_coercion=False):
 
 def parameters(snapshot, prefix):
     brief = snapshot['brief']
-    require(any('|' in line and not re.match(r'^[ \t]*(%|[A-Za-z]:)', line)
+    if snapshot.get('generation',{}).get('mode')=='style_lyrics':
+        from .store import Store
+        Store.validate_revision(snapshot['abc'],brief,'Direct input',snapshot['generation'])
+    else:require(any('|' in line and not re.match(r'^[ \t]*(%|[A-Za-z]:)', line)
                 for line in snapshot['abc'].splitlines()), 'ABC_MUSIC_BODY_REQUIRED')
     require(0 <= brief['seed'] <= 9007199254740991, 'MCP_SEED_PRECISION_LIMIT')
     require(brief['checkpoint'] == 'yue2_3b_int8_convrot.safetensors', 'MODEL_NOT_APPROVED')
@@ -66,14 +75,16 @@ def parameters(snapshot, prefix):
     return dict(**brief, abc=snapshot['abc'], filename_prefix=prefix)
 
 
-def blueprint(params):
+def blueprint(params,template_id=TEMPLATE_ID):
+    inputs={'clip': '$model.clip', 'model': '$model.model', 'vae': '$model.vae'}
+    if template_id==TEXT_TEMPLATE_ID:inputs['planning_clip']='$model.clip'
     return dict(pipeline=[dict(fragment='yue2_model', alias='model', params={'checkpoint': params['checkpoint']}),
-        dict(fragment='yue2_render', alias='render', inputs={'clip': '$model.clip', 'model': '$model.model', 'vae': '$model.vae'},
+        dict(fragment='yue2_text_render' if template_id==TEXT_TEMPLATE_ID else 'yue2_render', alias='render', inputs=inputs,
              params={k: v for k, v in params.items() if k != 'checkpoint'})])
 
 
-def validate(workflow, params, expected_template_sha256):
-    expected = template()
+def validate(workflow, params, expected_template_sha256, template_id=TEMPLATE_ID):
+    expected = template(template_id)
     require(sha(canonical(expected)) == expected_template_sha256, 'TEMPLATE_CHANGED')
     graph = graph_only(workflow)
     masked = deepcopy(graph)

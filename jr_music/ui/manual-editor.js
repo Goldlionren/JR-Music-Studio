@@ -3,7 +3,7 @@ const ManualEditor=(()=>{
   const drafts=new Map();
   function mount({root,revision:r,esc,preview,save}) {
     const data=r.manual_editor;
-    if(!data){root.textContent='编辑数据未加载，请刷新。';return;}
+    if(!data){root.textContent=r.snapshot.generation?'先以生成谱创建编辑候选，或修改 style／歌词后重新生成。':'编辑数据未加载，请刷新。';return;}
     let mode='sections',parts=structuredClone(data.sections),notes=structuredClone(data.notes),selectedBar=r.score.bars[0]?.bar_id;
     let words=r.snapshot.brief.lyrics,dragIndex=null;
     const draftKey=r.revision.snapshot_sha256;

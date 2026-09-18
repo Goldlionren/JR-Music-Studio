@@ -94,7 +94,7 @@ class HermesBridge:
     def target_adapter(self, job):
         if job['schema_version']=='render/4':
             from .comfy_remote import RemoteComfy
-            return RemoteComfy(self.renders,self.adapter,self.routing,job['production_binding'])
+            return RemoteComfy(self.renders,self.adapter,self.routing,job['production_binding'],job['template_id'])
         return self.adapter
 
     def dispatch(self, project_id, render_id, *, actor):
@@ -111,7 +111,8 @@ class HermesBridge:
                     mcp_alias=job['production_binding']['mcp_alias'],config_sha256=job['production_binding']['config_sha256'],
                     tool='run_workflow',arguments=dict(workflow_path=path,wait=False,timeout_seconds=110.0,confirm_spend=False),
                     retry_allowed=False,recovery_route=f'/projects/{project_id}/renders/{render_id}/reconcile')
-            environment = self.adapter.environment_probe()
+            from .render_template import TEMPLATE_ID
+            environment = self.adapter.environment_probe() if job['template_id']==TEMPLATE_ID else self.adapter.environment_probe(template_id=job['template_id'])
             self.renders.bind_environment(project_id, render_id, environment, actor=self.adapter.actor)
             if job['state'] == 'created':
                 self.adapter.compile(project_id, render_id)
@@ -153,8 +154,8 @@ def load_bridge(path, renders, ffmpeg, ffprobe):
             and config['schema_version'] == 'hermes-deployment/1', 'INVALID_HERMES_DEPLOYMENT')
     env = config['environment']
     require(set(env) == {'comfy_root', 'checkpoint', 'cache_root', 'model_config'}, 'INVALID_ENVIRONMENT_CONFIG')
-    def probe():
-        return collect_environment(**env, ffmpeg=ffmpeg, ffprobe=ffprobe, cli=config['cli'])
+    def probe(**options):
+        return collect_environment(**env, ffmpeg=ffmpeg, ffprobe=ffprobe, cli=config['cli'],**options)
     adapter = LocalComfy(renders, config['cli'], config['work_root'],
                          actor='hermes_executor', environment_probe=probe)
     routing=None

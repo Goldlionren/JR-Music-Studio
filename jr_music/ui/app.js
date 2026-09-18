@@ -83,6 +83,10 @@ const messages = {
   SESSION_REQUIRED: "本地会话已过期，请刷新页面。",
   CSRF_DENIED: "本地会话已过期，请刷新页面。",
   COMMAND_ALREADY_STARTED: "任务已经开始，不能当作尚未执行的任务撤回。",
+  DIRECT_SCORE_NOT_INPUT: "本候选由 style 与歌词直接生成。请先点击「以生成谱继续修改」创建编辑候选。",
+  GENERATED_SCORE_REQUIRED: "本次生成尚无可用规划谱。可继续修改 style／歌词，或开启 ABC planning 生成新候选。",
+  GENERATED_SCORE_MISSING: "服务器未返回规划谱，暂不能完整归档；请核对该任务的 ComfyUI 输出。",
+  MCP_TARGET_PROBE_FAILED: "生成服务器预检未通过，尚未获得提交许可。请检查服务器与 CLI 状态后重新生成。",
   SERVICE_UNAVAILABLE: "本地服务暂时不可用，请检查后刷新。",
   HERMES_UNAVAILABLE: "Hermes 接入未配置，任务未发送。",
   STALE_CREATION_PLAN: "创作讨论已更新，请查看最新方案后再操作。",
@@ -537,9 +541,22 @@ function workbench() {
   $("scoreExport").innerHTML=exportInfo?.available
     ? `<div class="review-controls"><strong>导出当前候选</strong><a class="button" href="${route(`/revisions/${state.focus}/score.mid`)}" download>MIDI ↓</a><a class="button" href="${route(`/revisions/${state.focus}/score.musicxml`)}" download>MusicXML ↓</a></div><p class="hint">${exportInfo.voice_count} 个声部 · 谱面时长 ${Math.floor(exportInfo.duration_seconds/60)}:${String(Math.floor(exportInfo.duration_seconds%60)).padStart(2,'0')}。MIDI 用于外部钢琴卷帘；MusicXML 用于乐谱与歌词。导出已保存版本，未保存的编辑请先另存候选。${exportInfo.warnings.map(esc).join(' ')}</p>`
     : `<p class="hint">暂不能导出：${esc(messages[exportInfo?.reason]||exportInfo?.reason||'请刷新加载导出信息。')}</p>`;
+  if(r.snapshot.generation) {
+    const render=currentRender(r),asset=render?.assets.find(a=>a.name==='generated-score.abc');
+    $("scoreExport").innerHTML=`<p class="hint">本候选由 style 与歌词直接生成${r.snapshot.generation.abc_planning?'，YuE2 负责规划旋律':'，未开启 ABC planning'}。${asset?'规划谱已归档；可另存为编辑候选，继续指挥银月／小舞修改。':'完成后如有规划谱，将在这里提供。'}规划谱是生成依据，不是实唱逐音转写。</p><div class="review-controls">${asset?`<a class="button" href="${route('/generated-score/'+asset.asset_id)}" download>YuE2 规划谱 ABC ↓</a><button id="useGeneratedScore">以生成谱继续修改</button>`:''}<button id="reviseDirect">修改 style／歌词再生成</button></div>`;
+    $("reviseDirect").onclick=()=>openDirect(r);
+    if(asset)$("useGeneratedScore").onclick=async()=>{
+      const path=route();$("useGeneratedScore").disabled=true;
+      try {const revision=await mutate(path+'/use-generated-score',{render_id:render.render_id});
+        if(route()!==path)return;
+        state.focus=revision.revision_id;state.selected=[r.revision.revision_id,revision.revision_id];state.bars.clear();
+        await loadProject(true);notify('规划谱已另存为编辑候选。原歌曲保留，可选择整曲、段落或小节继续修改。');
+      }catch(e){warn(errorText(e));if($("useGeneratedScore"))$("useGeneratedScore").disabled=false;}
+    };
+  }
   $("sheet").replaceChildren();
   try {
-    ABCJS.renderAbc("sheet", r.snapshot.abc, {
+    if(!r.snapshot.generation) ABCJS.renderAbc("sheet", r.snapshot.abc, {
       responsive: "resize",
       staffwidth: 720,
       add_classes: true,
@@ -569,6 +586,7 @@ function workbench() {
         ? `已识别全部 ${r.score.bars.length} 小节的音符；${meterIssues.map(c => `${c.voice_id} 第 ${c.ordinal} 小节为 ${c.before_beats} 拍，应为 ${c.after_beats} 拍`).join('；')}。可按原文试听，修正后可做精细音高编辑。`
         : `谱面仍有待支持的记谱：${[...new Set(r.score.parse_diagnostics.map(d => d.code))].join('、')}。可查看原文或使用整曲调整。`;
   $("repairScore").hidden = !r.score_repair?.available;
+  if(r.snapshot.generation)$("scoreStatus").textContent='这份候选没有预先编写的输入谱。试听后，可使用上方归档的 YuE2 规划谱继续编辑。';
   const reviewRender = currentRender(r);
   const reviewWav = reviewRender?.assets.find(
     (a) => a.media_type === "audio/wav",
@@ -683,7 +701,8 @@ function bars() {
       ? '可调整整体风格、编配、旋律或歌词；写明要保留的内容。另存候选并重新生成整首试听。'
       : '可调整本段旋律、节奏、歌词与演唱提示；其他段落的谱面和歌词逐字保留。音频会整首重新生成，听感可能变化。';
   $("instruction").placeholder = pitch ? '例如：让选中的旋律收束得更平静，减少向上的跳进。' : scope === 'song' ? '例如：整体改为更克制的暗色民谣，保留歌词和主旋律，减少前奏。' : '例如：这一段情绪更紧张，鼓点更强，保留歌词。';
-  $("sendEdit").disabled = pitch && (!state.bars.size || r.score.status !== "supported");
+  $("sendEdit").disabled = !!r.snapshot.generation || (pitch && (!state.bars.size || r.score.status !== "supported"));
+  if(r.snapshot.generation)$("scopeHelp").textContent='先在左侧「以生成谱继续修改」，再选择整曲、段落或小节；也可以直接修改 style／歌词后生成新候选。';
 }
 function lyricNavigation(r) {
   const mapping=r.score_lyric_map;
@@ -785,6 +804,7 @@ function saveCreationDraft() {
       mcp: $("creationMcp").value,
       duration: $("creationDuration").value,
       songcraft: $("creationSongcraft").value,
+      creationMode: $("creationMode").value,
       songcraftPolicy: "professional-20260918",
     }),
   );
@@ -797,13 +817,16 @@ function restoreCreationDraft() {
   $("creationMessage").value = draft?.message || "";
   $("creationAgent").value = draft?.agent || "yinyue";
   $("creationDuration").value = draft?.duration || "300";
+  $("creationMode").value = draft?.creationMode || "style_lyrics";
   $("creationSongcraft").value = draft?.songcraftPolicy === "professional-20260918" ? (draft.songcraft || "professional") : "professional";
   setMcpChoice("creationMcp",draft?.mcp || "");
+  restoreDirectDraft();
   state.creationProject = null;
 }
 function creation() {
   if (!state.data) return;
   $("creationPanel").hidden = false;
+  $("directPanel").hidden = false;
   const plans = state.data.commands.filter((c) => c.kind === "plan");
   const latest = plans.at(-1);
   const composition =
@@ -824,6 +847,7 @@ function creation() {
       $("creationAgent").value = latest.assigned_to;
       setMcpChoice("creationMcp",latest.production_binding?.mcp_alias || "");
       $("creationDuration").value = String(latest.target_duration);
+      $("creationMode").value = latest.creation_mode || 'score';
       $("creationSongcraft").value = "professional";
     }
   }
@@ -842,7 +866,7 @@ function creation() {
                 ? "正在检查与修复原回复格式，词曲不变…"
                 : composition.progress?.stage === 'validating'
                   ? "正在校验词曲、配谱与专业规格…"
-                  : "方案已确认，正在创作词曲与规格…"
+                  : composition.creation_mode === 'style_lyrics' ? "方案已确认，正在按 Skill 创作歌词与 style…" : "方案已确认，正在创作词曲与规格…"
       : latest?.result
         ? "方案已就绪，可继续讨论或确认生成"
         : "描述想法，与音乐伙伴一起确定方向";
@@ -872,7 +896,7 @@ function creation() {
         .map(([k, v]) => `<dt>${v}</dt><dd>${esc(latest.result.plan[k])}</dd>`)
         .join(
           "",
-        )}<dt>生成服务器</dt><dd>${esc(latest.production_binding?.mcp_alias || "历史默认 · jr_music_3060")}（方案已固定）</dd><dt>生成上限</dt><dd>${latest.target_duration} 秒 · ${esc(names[latest.assigned_to])}</dd><dt>创作方法</dt><dd>${esc(latest.songcraft?.label || '不启用 · 当前基线')}${latest.songcraft ? ' · v'+esc(latest.songcraft.version) : ''}</dd></dl>`;
+        )}<dt>初稿生成方式</dt><dd>${latest.creation_mode==='style_lyrics'?'Agent 写词与 style → YuE2 规划旋律':'Agent 编写 ABC 与专业规格'}</dd><dt>生成服务器</dt><dd>${esc(latest.production_binding?.mcp_alias || "历史默认 · jr_music_3060")}（方案已固定）</dd><dt>生成上限</dt><dd>${latest.target_duration} 秒 · ${esc(names[latest.assigned_to])}</dd><dt>创作方法</dt><dd>${esc(latest.songcraft?.label || '不启用 · 当前基线')}${latest.songcraft ? ' · v'+esc(latest.songcraft.version) : ''}</dd></dl>`;
     } else {
       $("creationPlan").innerHTML =
         `<p class="muted">${busy ? "正在根据你的想法整理方案…" : "发送想法后，方案会出现在这里。"}</p>`;
@@ -887,10 +911,12 @@ function creation() {
   $("creationDuration").disabled = !!busy;
   $("creationSongcraft").disabled = !!busy;
   $("creationMcp").disabled = !!busy;
+  $("creationMode").disabled = !!busy;
   const unsent =
     $("creationMessage").value.trim() ||
     (latest &&
       ($("creationAgent").value !== latest.assigned_to ||
+        $("creationMode").value !== (latest.creation_mode || 'score') ||
         $("creationSongcraft").value !== (latest.songcraft?.selection || 'none') ||
         ($("creationMcp").value && $("creationMcp").value !== latest.production_binding?.mcp_alias) ||
         Number($("creationDuration").value) !== latest.target_duration));
@@ -906,7 +932,7 @@ function creation() {
       ? "先发送新意见，再确认方案"
       : "确认方案并生成首版 ↗";
 }
-for (const id of ["creationMessage", "creationAgent", "creationDuration", "creationSongcraft", "creationMcp"]) {
+for (const id of ["creationMessage", "creationAgent", "creationDuration", "creationSongcraft", "creationMcp", "creationMode"]) {
   $(id).addEventListener("input", () => {
     saveCreationDraft();
     creation();
@@ -923,6 +949,7 @@ $("sendIdea").onclick = async () => {
       assigned_to: $("creationAgent").value,
       ...($("creationMcp").value ? {mcp_alias:$("creationMcp").value} : {}),
       songcraft_selection: $("creationSongcraft").value,
+      creation_mode: $("creationMode").value,
       instruction,
       target_duration: Number($("creationDuration").value),
       parent_command_id: latest?.command_id || null,
@@ -964,7 +991,7 @@ function activity() {
     const end = ['completed','needs_attention','cancelled'].includes(c.state) ? Date.parse(c.updated_at) : Date.now();
     const elapsed = Math.max(0, Math.floor((end-Date.parse(c.created_at))/1000));
     const model = c.progress?.model_evidence === 'session_log' ? `实际模型 ${c.progress.model}` : '实际模型待回执确认';
-    const stage = {starting:'启动会话',composing:'创作词曲与规格',format_check:'检查原回复格式',format_repair:'修复回复封装，词曲不变',validating:'校验词曲、配谱与规格',dispatching:'提交工作流',collecting:'回收音频'}[c.progress?.stage];
+    const stage = {starting:'启动会话',composing:c.kind==='plan'?'讨论创作方案':c.creation_mode==='style_lyrics'?'创作歌词与 style':'创作词曲与规格',format_check:'检查原回复格式',format_repair:'修复回复封装，词曲不变',validating:c.creation_mode==='style_lyrics'?'校验歌词与 style':'校验词曲、配谱与规格',dispatching:'提交工作流',collecting:'回收音频'}[c.progress?.stage];
     const stale = ['working','rendering'].includes(c.state) && c.progress?.reported_at && Date.now()-Date.parse(c.progress.reported_at)>45000;
     return `${Math.floor(elapsed/60)} 分 ${elapsed%60} 秒${c.format_recovery?'（累计，含等待恢复）':''} · ${c.kind==='analyze'?'音频分析，不调用创作模型':c.kind==='render'?'原样渲染，不调用创作模型':model}${c.state==='working'&&stage?' · '+stage:''}${stale?' · 心跳更新较慢，请核对连接':''}${c.format_recovery?' · 复用原回复继续':''}${c.retry_of?' · 失败任务的新尝试':''}`;
   };
@@ -1122,7 +1149,7 @@ async function sendCommand(kind) {
   if (!r) return;
   const instruction =
     kind === "render"
-      ? `保留当前 ABC 与歌词，按 ${$("renderDuration").value} 秒上限生成试听`
+      ? `保留当前 ${r.snapshot.generation ? 'style、歌词与规划选项' : 'ABC 与歌词'}，按 ${$("renderDuration").value} 秒上限生成试听`
       : $("instruction").value.trim();
   if (!instruction) {
     notify("先写下你希望怎么改。");
@@ -1179,7 +1206,7 @@ function restoreDraft() {
 }
 const mcpCatalogs = {};
 const mcpChoices = {};
-const mcpFields = {creationMcp:'creationAgent',editMcp:'agent'};
+const mcpFields = {creationMcp:'creationAgent',editMcp:'agent',directMcp:'directAgent'};
 function setMcpChoice(id, value) {
   mcpChoices[id+':'+$(mcpFields[id]).value] = value;
   paintMcp(id);
@@ -1205,7 +1232,7 @@ async function mcpStatus() {
   Object.keys(mcpFields).forEach(paintMcp);
 }
 for(const [id,agent] of Object.entries(mcpFields)) {
-  $(id).addEventListener('change',()=>{setMcpChoice(id,$(id).value);if(id==='creationMcp')saveCreationDraft();});
+  $(id).addEventListener('change',()=>{setMcpChoice(id,$(id).value);if(id==='creationMcp')saveCreationDraft();if(id==='directMcp')saveDirectDraft();});
   $(agent).addEventListener('change',()=>{paintMcp(id);mcpStatus();});
   $(id+'Refresh').onclick=async()=>{
     const actor=$(agent).value;
@@ -1226,12 +1253,13 @@ async function agentStatus() {
     for (const option of [
       ...$("agent").options,
       ...$("creationAgent").options,
+      ...$("directAgent").options,
     ]) {
       const v = values[option.value];
       option.textContent = `${names[option.value]} · ${v?.online ? (v.state === "working" ? "忙碌，可排队" : "在线") : "离线，任务会等待"}`;
     }
   } catch {
-    for (const option of [...$("agent").options, ...$("creationAgent").options])
+    for (const option of [...$("agent").options, ...$("creationAgent").options, ...$("directAgent").options])
       option.textContent = names[option.value] + " · 连接待检查";
   }
 }
@@ -1288,6 +1316,47 @@ $("newProject").onclick = () =>
       $("creationMessage").focus();
     },
   );
+let directParent=null;
+function saveDirectDraft(){
+  if(!state.pid)return;
+  localStorage.setItem('jr-direct:'+state.lib+':'+state.pid,JSON.stringify({style:$("directStyle").value,lyrics:$("directLyrics").value,
+    agent:$("directAgent").value,mcp:$("directMcp").value,duration:$("directDuration").value,seed:$("directSeed").value,
+    planning:$("directPlanning").checked,parent:directParent}));
+}
+function restoreDirectDraft(){
+  let d;try{d=JSON.parse(localStorage.getItem('jr-direct:'+state.lib+':'+state.pid));}catch{}
+  $("directStyle").value=d?.style||'';$("directLyrics").value=d?.lyrics||'';$("directAgent").value=d?.agent||'yinyue';
+  $("directDuration").value=d?.duration||'250';$("directSeed").value=d?.seed||'0';$("directPlanning").checked=d?.planning!==false;
+  directParent=d?.parent||null;setMcpChoice('directMcp',d?.mcp||'');
+  $("directSource").textContent=directParent?'修改已有候选的 style／歌词，另存新版本。':'';
+  $("directPanel").open=false;
+}
+for(const id of ['directStyle','directLyrics','directAgent','directDuration','directSeed','directPlanning'])$(id).addEventListener('input',saveDirectDraft);
+function openDirect(r=null) {
+  directParent=r?{pid:state.pid,lib:state.lib,source_revision_id:r.revision.revision_id,expected_snapshot_sha256:r.revision.snapshot_sha256}:null;
+  if(r){$("directStyle").value=r.snapshot.brief.style;$("directLyrics").value=r.snapshot.brief.lyrics;
+    $("directDuration").value=r.snapshot.brief.max_duration;$("directSeed").value=r.snapshot.brief.seed;
+    $("directPlanning").checked=r.snapshot.generation?.abc_planning!==false;}
+  $("directSource").textContent=r?'基于 '+label(r.revision.revision_id)+' 另存新候选，原文和原歌曲保留。':'提供 style 与歌词后，直接提交生成；无需导入乐谱。';
+  $("directPanel").open=true;$("directPanel").scrollIntoView({behavior:'smooth'});
+  saveDirectDraft();
+}
+$("openDirect").onclick=()=>openDirect();
+$("sendDirect").onclick=async()=>{
+  const style=$("directStyle").value,lyrics=$("directLyrics").value,path=route();
+  if(!style.trim()||!lyrics.trim()){warn('请填写 style 和歌词。');return;}
+  const duration=Number($("directDuration").value),seed=Number($("directSeed").value);
+  if(!Number.isFinite(duration)||duration<1||duration>300||!Number.isSafeInteger(seed)||seed<0){warn('时长应为 1–300 秒；种子应为有效的非负整数。');return;}
+  if(directParent&&(directParent.pid!==state.pid||directParent.lib!==state.lib)){warn('已切换项目，请重新打开直接生成入口。');return;}
+  $("sendDirect").disabled=true;
+  try {const c=await mutate(path+'/direct-generate',{style,lyrics,assigned_to:$("directAgent").value,target_duration:duration,seed,
+    abc_planning:$("directPlanning").checked,...($("directMcp").value?{mcp_alias:$("directMcp").value}:{}),
+    ...(directParent?{source_revision_id:directParent.source_revision_id,expected_snapshot_sha256:directParent.expected_snapshot_sha256}:{})});
+    if(route()!==path)return;
+    state.focus=c.source_revision_id;state.selected=[...state.selected.slice(-2),c.source_revision_id];
+    await loadProject(true);notify('已提交直接生成，进度见任务记录；完成后歌曲与规划谱会归档。');
+  }catch(e){warn(errorText(e));}finally{$("sendDirect").disabled=false;}
+};
 $("addCandidate").onclick = () => {
   if (!state.pid) return;
   const path = route("/revisions");
