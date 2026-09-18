@@ -1,0 +1,13 @@
+{
+  "shasum": "11390600dc15738e234a9d15a384a012c0dd5dc6",
+  "tarball": "https://registry.npmjs.org/abcjs/-/abcjs-6.5.2.tgz",
+  "fileCount": 178,
+  "integrity": "sha512-XLDZPy/4TZbOqPsLwuu0Umsl79NTAcObEkboPxdYZXI8/fU6PNh59SAnkZOnEPVbyT8EXfBUjgNoe/uKd3T0xQ==",
+  "signatures": [
+    {
+      "sig": "MEUCIQC8lIDj+2KRdUwXJDgf2DdzcKOS11aJndfJjfx5rvvKpwIgaXOBliRahITTmXY2i2+aoLlN00a9851AHfUPMpH66BE=",
+      "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+    }
+  ],
+  "unpackedSize": 5702188
+}

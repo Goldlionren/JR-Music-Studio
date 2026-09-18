@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "scope": {
+      "enum": [
+        "lyrics",
+        "melody",
+        "arrangement",
+        "audio_performance",
+        "overall"
+      ]
+    },
+    "preference": {
+      "enum": [
+        "baseline",
+        "master",
+        "no_preference",
+        "both_unsuitable",
+        "undecided"
+      ]
+    },
+    "positive_traits": {
+      "type": "object",
+      "properties": {
+        "baseline": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "master": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "baseline",
+        "master"
+      ],
+      "additionalProperties": false
+    },
+    "negative_traits": {
+      "type": "object",
+      "properties": {
+        "baseline": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "master": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "baseline",
+        "master"
+      ],
+      "additionalProperties": false
+    },
+    "free_text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evaluation_mode": {
+      "enum": [
+        "lyrics_only",
+        "open_label_listening"
+      ]
+    },
+    "render_ids": {
+      "type": "object",
+      "properties": {
+        "baseline": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,95}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "master": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,95}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "baseline",
+        "master"
+      ],
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "direct_user_statement"
+        },
+        "verbatim": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "type",
+        "verbatim"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "scope",
+    "preference",
+    "positive_traits",
+    "negative_traits",
+    "free_text",
+    "evaluation_mode",
+    "render_ids",
+    "source"
+  ],
+  "additionalProperties": false
+}

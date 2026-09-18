@@ -1,0 +1,433 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jr-music:edit-verification:1",
+  "description": "Shape of a server-generated verification artifact; true flags alone are not proof. Use replay checking.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "edit-verification/1"
+    },
+    "kind": {
+      "const": "protected_edit_verification"
+    },
+    "verification_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requested_by": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verifier_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "parser_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "address_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verifier_scope": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_revision_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "result_revision_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "representation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "granted_by": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verification_method": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_snapshot_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "result_snapshot_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_abc_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "result_abc_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "representation_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "request_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "submitted_edits_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_brief_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "result_brief_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_byte_length": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "result_byte_length": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "allowed_bar_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "allowed_event_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "requested_event_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "submitted_edits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected_pitch": {
+            "type": "string",
+            "minLength": 1
+          },
+          "new_pitch": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "event_id",
+          "expected_pitch",
+          "new_pitch"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 1000
+    },
+    "changed_events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "bar_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "voice_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "section_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before_pitch": {
+            "type": "string",
+            "minLength": 1
+          },
+          "after_pitch": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before_midi_pitch": {
+            "type": "integer"
+          },
+          "after_midi_pitch": {
+            "type": "integer"
+          },
+          "midi_pitch_changed": {
+            "type": "boolean"
+          },
+          "source_span": {
+            "type": "object",
+            "properties": {
+              "byte_start": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "byte_end": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "byte_start",
+              "byte_end"
+            ],
+            "additionalProperties": false
+          },
+          "result_span": {
+            "type": "object",
+            "properties": {
+              "byte_start": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "byte_end": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "byte_start",
+              "byte_end"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "event_id",
+          "bar_id",
+          "voice_id",
+          "section_id",
+          "before_pitch",
+          "after_pitch",
+          "before_midi_pitch",
+          "after_midi_pitch",
+          "midi_pitch_changed",
+          "source_span",
+          "result_span"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 1000
+    },
+    "protected_segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source_span": {
+            "type": "object",
+            "properties": {
+              "byte_start": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "byte_end": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "byte_start",
+              "byte_end"
+            ],
+            "additionalProperties": false
+          },
+          "result_span": {
+            "type": "object",
+            "properties": {
+              "byte_start": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "byte_end": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "byte_start",
+              "byte_end"
+            ],
+            "additionalProperties": false
+          },
+          "byte_length": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "source_span",
+          "result_span",
+          "byte_length",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 2,
+      "maxItems": 1001
+    },
+    "unchanged_requested_event_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "preserved": {
+      "type": "object",
+      "properties": {
+        "headers": {
+          "const": true
+        },
+        "meter": {
+          "const": true
+        },
+        "tempo": {
+          "const": true
+        },
+        "key": {
+          "const": true
+        },
+        "voices": {
+          "const": true
+        },
+        "durations": {
+          "const": true
+        },
+        "structure": {
+          "const": true
+        },
+        "ties": {
+          "const": true
+        },
+        "brief": {
+          "const": true
+        },
+        "outside_changed_pitch_spans": {
+          "const": true
+        },
+        "outside_allowed_region": {
+          "const": true
+        }
+      },
+      "required": [
+        "headers",
+        "meter",
+        "tempo",
+        "key",
+        "voices",
+        "durations",
+        "structure",
+        "ties",
+        "brief",
+        "outside_changed_pitch_spans",
+        "outside_allowed_region"
+      ],
+      "additionalProperties": false
+    },
+    "audio_preservation": {
+      "const": "not_supported"
+    },
+    "audio_evaluated": {
+      "const": false
+    },
+    "aesthetics_evaluated": {
+      "const": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "verification_id",
+    "created_at",
+    "requested_by",
+    "verifier_version",
+    "parser_version",
+    "address_version",
+    "verifier_scope",
+    "project_id",
+    "source_revision_id",
+    "result_revision_id",
+    "representation_id",
+    "request_id",
+    "granted_by",
+    "verification_method",
+    "source_snapshot_sha256",
+    "result_snapshot_sha256",
+    "source_abc_sha256",
+    "result_abc_sha256",
+    "representation_sha256",
+    "request_sha256",
+    "submitted_edits_sha256",
+    "source_brief_sha256",
+    "result_brief_sha256",
+    "source_byte_length",
+    "result_byte_length",
+    "allowed_bar_ids",
+    "allowed_event_ids",
+    "requested_event_ids",
+    "submitted_edits",
+    "changed_events",
+    "protected_segments",
+    "unchanged_requested_event_ids",
+    "preserved",
+    "audio_preservation",
+    "audio_evaluated",
+    "aesthetics_evaluated"
+  ],
+  "additionalProperties": false
+}

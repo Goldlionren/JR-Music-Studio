@@ -1,0 +1,225 @@
+{
+  "_fragment": {
+    "name": "yue2_render",
+    "version": "1",
+    "description": "Derived from the archived successful official YuE2 graph.",
+    "source": "research/yue2/official-first-run/original.api.json",
+    "terminal": true,
+    "inputs": {
+      "clip": {
+        "type": "CLIP",
+        "binds": "7.clip"
+      },
+      "model": {
+        "type": "MODEL",
+        "binds": "11.model"
+      },
+      "vae": {
+        "type": "VAE",
+        "binds": "13.vae"
+      }
+    },
+    "outputs": {},
+    "params": {
+      "style": {
+        "type": "STRING",
+        "binds": "15.value"
+      },
+      "lyrics": {
+        "type": "STRING",
+        "binds": "16.value"
+      },
+      "seed": {
+        "type": "INT",
+        "binds": "14.seed",
+        "default": 0
+      },
+      "abc": {
+        "type": "STRING",
+        "binds": "6.value"
+      },
+      "max_duration": {
+        "type": "FLOAT",
+        "binds": "7.max_duration",
+        "default": 30.0
+      },
+      "filename_prefix": {
+        "type": "STRING",
+        "binds": "1.filename_prefix"
+      }
+    }
+  },
+  "1": {
+    "inputs": {
+      "filename_prefix": "PLACEHOLDER",
+      "format": "flac",
+      "audio": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "SaveAudioAdvanced",
+    "_meta": {
+      "title": "Save Audio (Advanced)"
+    }
+  },
+  "4": {
+    "inputs": {
+      "source": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "PreviewAny",
+    "_meta": {
+      "title": "Exact input ABC (archived with this render)"
+    }
+  },
+  "6": {
+    "inputs": {
+      "value": "PLACEHOLDER"
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "Text (Empty ABC)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "style": [
+        "15",
+        0
+      ],
+      "lyrics": [
+        "16",
+        0
+      ],
+      "abc": [
+        "4",
+        0
+      ],
+      "seed": [
+        "14",
+        0
+      ],
+      "mode": "full",
+      "max_duration": "PLACEHOLDER",
+      "temperature": 1.0,
+      "top_p": 0.95,
+      "top_k": 100,
+      "repetition_penalty": 1.2,
+      "clip": "PLACEHOLDER"
+    },
+    "class_type": "YuE2GenerateMusic",
+    "_meta": {
+      "title": "YuE2 Generate Music"
+    }
+  },
+  "9": {
+    "inputs": {
+      "conditioning": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "Conditioning Zero Out"
+    }
+  },
+  "10": {
+    "inputs": {
+      "source": [
+        "7",
+        1
+      ]
+    },
+    "class_type": "PreviewAny",
+    "_meta": {
+      "title": "Preview as Text"
+    }
+  },
+  "11": {
+    "inputs": {
+      "seed": [
+        "14",
+        0
+      ],
+      "steps": 32,
+      "cfg": 1.0,
+      "sampler_name": "dpm_2",
+      "scheduler": "sgm_uniform",
+      "denoise": 1.0,
+      "model": "PLACEHOLDER",
+      "positive": [
+        "7",
+        0
+      ],
+      "negative": [
+        "9",
+        0
+      ],
+      "latent_image": [
+        "12",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "12": {
+    "inputs": {
+      "seconds": [
+        "7",
+        1
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyYuE2LatentAudio",
+    "_meta": {
+      "title": "Empty YuE2 Latent Audio"
+    }
+  },
+  "13": {
+    "inputs": {
+      "samples": [
+        "11",
+        0
+      ],
+      "vae": "PLACEHOLDER"
+    },
+    "class_type": "VAEDecodeAudio",
+    "_meta": {
+      "title": "VAE Decode Audio"
+    }
+  },
+  "14": {
+    "inputs": {
+      "seed": "PLACEHOLDER"
+    },
+    "class_type": "SeedNode",
+    "_meta": {
+      "title": "Seed"
+    }
+  },
+  "15": {
+    "inputs": {
+      "value": "PLACEHOLDER"
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "Text (Style)"
+    }
+  },
+  "16": {
+    "inputs": {
+      "value": "PLACEHOLDER"
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "Text (Lyrics)"
+    }
+  }
+}

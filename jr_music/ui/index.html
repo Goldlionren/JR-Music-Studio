@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>JR · Producer Console</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script defer src="/vendor/abcjs-basic-min.js"></script>
+    <script defer src="/score-review.js"></script>
+    <script defer src="/manual-editor.js"></script>
+    <script defer src="/score-lyrics.js"></script>
+    <script defer src="/audio-analysis.js"></script>
+    <script defer src="/app.js"></script>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="JR Music Studio 首页"
+        ><span class="monogram">JR</span
+        ><span>Music Studio<small>PRODUCER CONSOLE</small></span></a
+      >
+      <div class="sidebar-heading">
+        <span>我的项目</span
+        ><button id="newProject" aria-label="新建歌曲">＋ 新建歌曲</button>
+      </div>
+      <label class="search"
+        ><span>⌕</span
+        ><input id="search" placeholder="查找项目…" aria-label="查找项目"
+      /></label>
+      <nav id="projects" aria-label="项目列表">
+        <p class="muted">正在读取音乐库…</p>
+      </nav>
+      <footer>
+        <div class="server-dot">本机工作室 · 多服务器生成</div>
+        <p>YuE2 · Hermes / Comfy MCP</p>
+        <small>M1-07 · Producer Console MVP</small>
+      </footer>
+    </aside>
+    <main>
+      <header class="topbar">
+        <div>
+          <span class="eyebrow" id="libraryLabel">你的音乐工作台</span>
+          <h1 id="projectTitle">Producer Console</h1>
+        </div>
+        <div class="top-actions">
+          <span id="connection" role="status">连接中</span
+          ><button id="refresh">刷新</button>
+        </div>
+      </header>
+      <div id="notice" role="alert" hidden></div>
+      <details id="creationPanel" class="creation-panel" hidden>
+        <summary>
+          <span class="eyebrow">CREATE / 从一个想法开始</span
+          ><strong>创作一首新歌</strong
+          ><span id="creationStatus" class="muted"
+            >描述想法，与音乐伙伴一起确定方向</span
+          >
+        </summary>
+        <p class="hint">
+          说说你想写什么，或贴上已有歌词。先讨论方案，由你确认后再生成首版；无需准备乐谱。
+        </p>
+        <div class="creation-grid">
+          <div>
+            <div
+              id="creationConversation"
+              class="creation-conversation"
+              aria-label="创作讨论记录"
+              aria-live="polite"
+            ></div>
+            <label for="creationMessage">这首歌，你想表达什么？</label>
+            <textarea
+              id="creationMessage"
+              rows="4"
+              maxlength="4000"
+              placeholder="例如：写一首关于雨夜归家的中文歌，有被等候的温暖。歌词含蓄一些，木吉他和钢琴，不要太长的前奏。"
+            ></textarea>
+            <div class="creation-controls">
+              <label for="creationAgent"
+                >创作伙伴<select id="creationAgent">
+                  <option value="yinyue">银月</option>
+                  <option value="xiaowu">小舞</option>
+                </select></label
+              >
+              <label for="creationDuration"
+                >生成时长上限<select id="creationDuration">
+                  <option value="30">30 秒</option>
+                  <option value="60">60 秒</option>
+                  <option value="120">120 秒</option>
+                  <option value="180">180 秒</option>
+                  <option value="240">240 秒</option>
+                  <option value="300" selected>300 秒</option>
+                </select></label
+              >
+                <label for="creationSongcraft">创作方法<select id="creationSongcraft"><option value="professional">专业编曲 + 作词 · jtydhr88（主要方法）</option></select></label>
+                <label for="creationMcp">生成服务器<select id="creationMcp"><option value="">使用此伙伴默认</option></select><small id="creationMcpStatus"></small></label>
+                <button id="creationMcpRefresh" type="button">读取 MCP 列表</button>
+                <button id="creationMcpDefault" type="button">设为此伙伴默认</button>
+                <button id="sendIdea" class="primary">发送想法，讨论方案</button>
+            </div>
+            <p class="hint">
+              讨论不会启动音频生成。可以多轮补充、修改；任务和回复都会保存在项目里。专业方法会查阅参考并规划词曲，可能需要数分钟。
+            </p>
+          </div>
+          <div class="creation-plan">
+            <h3 id="creationPlanHeading">待你确认的创作方案</h3>
+            <div id="creationPlan">
+              <p class="muted">发送想法后，方案会出现在这里。</p>
+            </div>
+            <button id="confirmCreation" class="primary wide" disabled>
+              确认方案并生成首版 ↗
+            </button>
+            <p class="hint">
+              确认后自动写词、作曲并生成试听。首版作为独立候选保存，是否采用由你决定。时长是上限，歌曲可能提前结束。
+            </p>
+          </div>
+        </div>
+      </details>
+      <section class="head-strip">
+        <span class="head-icon">◉</span>
+        <div>
+          <small>当前采用</small><strong id="headLabel">尚未选择版本</strong>
+        </div>
+        <span class="muted" id="headHelp"
+          >试听偏好会单独保存，由你决定最终版本。</span
+        ><button id="historyButton">版本记录 ↗</button>
+      </section>
+      <section class="comparison">
+        <div class="section-title">
+          <div>
+            <span class="eyebrow">01 / LISTEN</span>
+            <h2>候选试听</h2>
+          </div>
+          <div class="comparison-help">一次播放一个候选 · 保留各自试听位置</div>
+          <button id="addCandidate">导入候选</button>
+        </div>
+        <div id="compare" class="compare-grid"></div>
+        <details id="versions">
+          <summary>
+            所有版本 <span id="versionCount"></span
+            ><span class="muted"> · 选择最多三个加入对比</span>
+          </summary>
+          <div id="versionList"></div>
+        </details>
+      </section>
+      <div id="workbench" class="workbench">
+        <section class="score-panel">
+          <div class="section-title">
+            <div>
+              <span class="eyebrow">02 / EXPLORE</span>
+              <h2>看谱与歌词 <span id="focusLabel" class="pill"></span></h2>
+            </div>
+            <div class="tabs" role="tablist">
+              <button role="tab" aria-selected="true" data-tab="score">
+                五线谱</button
+              ><button role="tab" aria-selected="false" data-tab="lyrics">
+                歌词对比</button
+              ><button role="tab" aria-selected="false" data-tab="abc">
+                ABC 原文
+              </button>
+            </div>
+          </div>
+          <section id="scoreExport" class="score-export" aria-label="导出乐谱供外部软件使用"></section>
+          <div id="scoreView">
+            <p class="hint">
+              创作输入谱：用于引导
+              YuE2，不代表实际演唱的逐音转写。点击音符或小节选择修改范围。
+            </p>
+            <div id="sheet" aria-label="当前候选五线谱"></div>
+            <div id="scoreStatus"></div>
+            <button id="repairScore" hidden>修正拍数，另存谱面版本</button>
+            <section id="scoreReview" aria-label="谱面与实唱对照"></section>
+            <section id="audioAnalysis" aria-label="实唱歌词时间线"></section>
+            <section
+              id="lyricNavigation"
+              aria-label="歌词与小节参考定位"
+            ></section>
+            <div id="bars" class="bar-grid"></div>
+            <details class="source-details"><summary>编辑歌词配谱关系</summary><div id="scoreLyricEditor"></div></details>
+          </div>
+          <div id="lyricsView" hidden>
+            <div id="lyricsGrid" class="lyrics-grid"></div>
+          </div>
+          <div id="abcView" hidden>
+            <p class="hint">这是保存的完整原文。显示和解析不会改写它。</p>
+            <pre id="abc"></pre>
+          </div>
+          <details class="source-details">
+            <summary>直接编辑 · 曲式、歌词、音符与和弦</summary>
+            <div id="manualEditor"></div>
+          </details>
+          <details class="source-details">
+            <summary>候选详情与来源</summary>
+            <dl id="metadata"></dl>
+          </details>
+        </section>
+        <aside class="direction-panel">
+          <span class="eyebrow">03 / DIRECT</span>
+          <h2>给下一版一个方向</h2>
+          <p id="editBase" class="hint">先选择一个候选。</p>
+          <label for="agent">交给谁来做</label
+          ><select id="agent">
+            <option value="yinyue">银月 · Hermes</option>
+            <option value="xiaowu">小舞 · Hermes</option>
+          </select>
+          <label for="editMcp">生成服务器</label>
+          <select id="editMcp"><option value="">使用此伙伴默认</option></select>
+          <p id="editMcpStatus" class="hint"></p>
+          <div class="export-actions"><button id="editMcpRefresh" type="button">读取 MCP 列表</button><button id="editMcpDefault" type="button">设为此伙伴默认</button></div>
+            <label for="editSongcraft">这次使用的创作方法</label>
+            <select id="editSongcraft"><option value="professional">专业编曲 + 作词 · jtydhr88（主要方法）</option></select>
+            <p class="hint">专业编曲与作词为主要方法，遵守下方保留范围。会查阅参考并检查规格，可能需要数分钟；效果仍由你试听判断。</p>
+            <label for="editScope">修改方式与范围</label>
+          <select id="editScope"><option value="song">整曲 · 风格与整体方向</option><option value="pitch">精细 · 所选小节音高</option></select>
+          <fieldset id="preserveFields" class="preserve-fields"><legend>这次必须保留</legend>
+            <label><input type="checkbox" value="lyrics" checked>歌词</label><label><input type="checkbox" value="melody">旋律音高</label>
+            <label><input type="checkbox" value="rhythm">节奏</label><label><input type="checkbox" value="chords">和弦</label>
+            <label><input type="checkbox" value="structure">段落结构</label><label><input type="checkbox" value="tempo">速度</label>
+            <label><input type="checkbox" value="key">调性</label><label><input type="checkbox" value="style">整体风格</label>
+            <p class="hint">保存前核对创作输入的保留约束；YuE2 的实际演唱仍需试听确认。</p>
+          </fieldset>
+          <div class="scope">
+            <span>本次修改范围</span
+            ><strong id="scopeLabel">尚未选择小节</strong>
+            <p id="scopeLyrics" hidden></p>
+            <small id="scopeHelp"></small>
+          </div>
+          <label for="instruction">你希望怎么改</label
+          ><textarea
+            id="instruction"
+            rows="4"
+            maxlength="4000"
+            placeholder="例如：让选中的旋律收束得更平静，减少向上的跳进。"
+          ></textarea>
+          <button id="sendEdit" class="primary wide">
+            发送修改并生成试听 ↗
+          </button>
+          <label for="renderDuration">重新生成的时长上限</label>
+          <select id="renderDuration">
+            <option value="30">30 秒 · 短试听</option>
+            <option value="60">60 秒</option>
+            <option value="120">120 秒</option>
+            <option value="180">180 秒</option>
+            <option value="240">240 秒</option>
+            <option value="300" selected>300 秒 · 长版试听</option>
+          </select>
+          <button id="sendRender" class="wide quiet">按所选时长生成试听</button>
+          <p class="hint" id="durationHint"></p>
+          <div class="feedback-form">
+            <h3>记下听感</h3>
+            <label class="sr-only" for="feedback">当前候选的试听反馈</label
+            ><textarea
+              id="feedback"
+              rows="3"
+              maxlength="4000"
+              placeholder="喜欢哪里？下一版想保留什么？"
+            ></textarea
+            ><button id="saveFeedback" class="wide">保存到当前候选</button>
+            <p class="hint">反馈不会自动 Accept，也不会调整 Music Master。</p>
+          </div>
+        </aside>
+      </div>
+      <section class="activity">
+        <div class="section-title">
+          <div>
+            <span class="eyebrow">04 / CONTINUE</span>
+            <h2>任务与制作记录</h2>
+          </div>
+          <small class="muted">新候选完成后会出现在试听区</small>
+        </div>
+        <div id="commands"></div>
+        <div id="timeline"></div>
+      </section>
+    </main>
+    <dialog id="dialog">
+      <form id="dialogForm">
+        <div class="dialog-title">
+          <h2 id="dialogTitle"></h2>
+          <button type="button" id="closeDialog" aria-label="关闭">×</button>
+        </div>
+        <div id="dialogBody"></div>
+        <div class="dialog-actions">
+          <button type="button" id="cancelDialog">取消</button
+          ><button type="submit" id="confirmDialog" class="primary">
+            确认
+          </button>
+        </div>
+        <p id="dialogError" role="alert"></p>
+      </form>
+    </dialog>
+    <div id="toast" role="status" hidden></div>
+  </body>
+</html>

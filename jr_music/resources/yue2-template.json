@@ -1,0 +1,154 @@
+{
+  "102": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "<bound-parameter>"
+    }
+  },
+  "152": {
+    "class_type": "SaveAudioAdvanced",
+    "inputs": {
+      "filename_prefix": "<bound-parameter>",
+      "format": "flac",
+      "audio": [
+        "164",
+        0
+      ]
+    }
+  },
+  "155": {
+    "class_type": "PreviewAny",
+    "inputs": {
+      "source": [
+        "157",
+        0
+      ]
+    }
+  },
+  "157": {
+    "class_type": "PrimitiveString",
+    "inputs": {
+      "value": "<bound-parameter>"
+    }
+  },
+  "158": {
+    "class_type": "YuE2GenerateMusic",
+    "inputs": {
+      "style": [
+        "166",
+        0
+      ],
+      "lyrics": [
+        "167",
+        0
+      ],
+      "abc": [
+        "155",
+        0
+      ],
+      "seed": [
+        "165",
+        0
+      ],
+      "mode": "full",
+      "max_duration": "<bound-parameter>",
+      "temperature": 1.0,
+      "top_p": 0.95,
+      "top_k": 100,
+      "repetition_penalty": 1.2,
+      "clip": [
+        "102",
+        1
+      ]
+    }
+  },
+  "160": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "158",
+        0
+      ]
+    }
+  },
+  "161": {
+    "class_type": "PreviewAny",
+    "inputs": {
+      "source": [
+        "158",
+        1
+      ]
+    }
+  },
+  "162": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": [
+        "165",
+        0
+      ],
+      "steps": 32,
+      "cfg": 1.0,
+      "sampler_name": "dpm_2",
+      "scheduler": "sgm_uniform",
+      "denoise": 1.0,
+      "model": [
+        "102",
+        0
+      ],
+      "positive": [
+        "158",
+        0
+      ],
+      "negative": [
+        "160",
+        0
+      ],
+      "latent_image": [
+        "163",
+        0
+      ]
+    }
+  },
+  "163": {
+    "class_type": "EmptyYuE2LatentAudio",
+    "inputs": {
+      "seconds": [
+        "158",
+        1
+      ],
+      "batch_size": 1
+    }
+  },
+  "164": {
+    "class_type": "VAEDecodeAudio",
+    "inputs": {
+      "samples": [
+        "162",
+        0
+      ],
+      "vae": [
+        "102",
+        2
+      ]
+    }
+  },
+  "165": {
+    "class_type": "SeedNode",
+    "inputs": {
+      "seed": "<bound-parameter>"
+    }
+  },
+  "166": {
+    "class_type": "PrimitiveStringMultiline",
+    "inputs": {
+      "value": "<bound-parameter>"
+    }
+  },
+  "167": {
+    "class_type": "PrimitiveStringMultiline",
+    "inputs": {
+      "value": "<bound-parameter>"
+    }
+  }
+}

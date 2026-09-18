@@ -1,0 +1,2 @@
+# Shared by runtime Master/Critic contract validation and design verification.
+jsonschema==4.26.0

@@ -1,0 +1,40 @@
+{
+  "schema_version": "hermes-deployment/1",
+  "cli": "C:/REPLACE_ME/comfy.exe",
+  "work_root": "C:/REPLACE_ME/jr-renders",
+  "environment": {
+    "comfy_root": "C:/REPLACE_ME/ComfyUI",
+    "checkpoint": "C:/REPLACE_ME/models/checkpoints/yue2_3b_int8_convrot.safetensors",
+    "cache_root": "data/environment-cache",
+    "model_config": "C:/REPLACE_ME/ComfyUI/extra_model_paths.yaml"
+  },
+  "bindings": {
+    "yinyue": {
+      "schema_version": "hermes-binding/1",
+      "actor_id": "yinyue",
+      "mcp_alias": "REPLACE_ME_COMFY_MCP_ALIAS",
+      "hermes_host": "REPLACE_ME_HERMES_HOST",
+      "mcp_host": "REPLACE_ME_COMFY_HOST",
+      "workspace": "C:/REPLACE_ME/jr-renders",
+      "topology": "jr_and_mcp_same_host",
+      "evidence_basis": "operator_configuration"
+    },
+    "xiaowu": {
+      "schema_version": "hermes-binding/1",
+      "actor_id": "xiaowu",
+      "mcp_alias": "REPLACE_ME_COMFY_MCP_ALIAS",
+      "hermes_host": "REPLACE_ME_HERMES_HOST",
+      "mcp_host": "REPLACE_ME_COMFY_HOST",
+      "workspace": "C:/REPLACE_ME/jr-renders",
+      "topology": "jr_and_mcp_same_host",
+      "evidence_basis": "operator_configuration"
+    }
+  },
+  "mcp_routing": {
+    "identity_file": "C:/REPLACE_ME/private/jr_broker_key",
+    "hosts": {
+      "yinyue": "REPLACE_ME_YINYUE_SSH_ALIAS",
+      "xiaowu": "REPLACE_ME_XIAOWU_SSH_ALIAS"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "_fragment": {
+    "name": "yue2_model",
+    "version": "1",
+    "description": "Derived from the archived successful official YuE2 graph.",
+    "source": "research/yue2/official-first-run/original.api.json",
+    "terminal": false,
+    "inputs": {},
+    "outputs": {
+      "model": {
+        "type": "MODEL",
+        "from": "2",
+        "port": 0
+      },
+      "clip": {
+        "type": "CLIP",
+        "from": "2",
+        "port": 1
+      },
+      "vae": {
+        "type": "VAE",
+        "from": "2",
+        "port": 2
+      }
+    },
+    "params": {
+      "checkpoint": {
+        "type": "STRING",
+        "binds": "2.ckpt_name"
+      }
+    }
+  },
+  "2": {
+    "inputs": {
+      "ckpt_name": "PLACEHOLDER"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  }
+}

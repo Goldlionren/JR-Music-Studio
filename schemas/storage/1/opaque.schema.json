@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jr-ai-music-studio:storage:1:opaque",
+  "description": "Local opaque import records; intentionally separate from the structured M1 0.1.0 song snapshot. No musical validation or section-level editing guarantee.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/snapshot"
+    },
+    {
+      "$ref": "#/$defs/revision"
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,95}$"
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "brief": {
+      "type": "object",
+      "properties": {
+        "style": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000
+        },
+        "lyrics": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000
+        },
+        "checkpoint": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615
+        },
+        "max_duration": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 300
+        }
+      },
+      "required": [
+        "style",
+        "lyrics",
+        "checkpoint",
+        "seed",
+        "max_duration"
+      ],
+      "additionalProperties": false
+    },
+    "snapshot": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "storage/1"
+        },
+        "kind": {
+          "const": "opaque_song_snapshot"
+        },
+        "project_id": {
+          "$ref": "#/$defs/id"
+        },
+        "import_status": {
+          "const": "opaque_import"
+        },
+        "abc": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000000
+        },
+        "brief": {
+          "$ref": "#/$defs/brief"
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "project_id",
+        "import_status",
+        "abc",
+        "brief"
+      ],
+      "additionalProperties": false
+    },
+    "revision": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "storage/1"
+        },
+        "kind": {
+          "const": "opaque_revision"
+        },
+        "project_id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision_id": {
+          "$ref": "#/$defs/id"
+        },
+        "parent_revision_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "snapshot_sha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "abc_sha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "author_id": {
+          "$ref": "#/$defs/id"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "project_id",
+        "revision_id",
+        "parent_revision_id",
+        "snapshot_sha256",
+        "abc_sha256",
+        "author_id",
+        "created_at",
+        "summary"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

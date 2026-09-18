@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "semantic-lyric/1"
+    },
+    "request_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "critic_identity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context_policy": {
+      "const": "anonymous_lyrics_and_brief_only"
+    },
+    "audio_evaluated": {
+      "const": false
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "enum": [
+              "X",
+              "Y"
+            ]
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "dimension": {
+                  "enum": [
+                    "linguistic_elegance",
+                    "subtlety",
+                    "restraint",
+                    "cliche_density",
+                    "emotional_explicitness",
+                    "image_economy",
+                    "metaphor_economy",
+                    "narrative_economy",
+                    "original_phrasing",
+                    "over_explanation",
+                    "sentimental_overstatement",
+                    "colloquial_naturalness",
+                    "line_quality",
+                    "hook_wording"
+                  ]
+                },
+                "finding": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "line_number": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "quote": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "line_number",
+                      "quote"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "minItems": 1
+                },
+                "confidence": {
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ]
+                },
+                "limitations": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 1
+                }
+              },
+              "required": [
+                "dimension",
+                "finding",
+                "evidence",
+                "confidence",
+                "limitations"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 14,
+            "maxItems": 14
+          }
+        },
+        "required": [
+          "label",
+          "findings"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "overall_score": {
+      "type": "null"
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "request_sha256",
+    "critic_identity",
+    "context_policy",
+    "audio_evaluated",
+    "candidates",
+    "overall_score",
+    "limitations"
+  ],
+  "additionalProperties": false
+}

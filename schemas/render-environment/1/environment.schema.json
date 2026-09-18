@@ -1,0 +1,548 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "checkpoint": {
+      "type": "object",
+      "properties": {
+        "file_identity": {
+          "type": "object",
+          "properties": {
+            "ctime_ns": {
+              "type": "integer"
+            },
+            "device": {
+              "type": "integer"
+            },
+            "inode": {
+              "type": "integer"
+            },
+            "mtime_ns": {
+              "type": "integer"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "size": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "ctime_ns",
+            "device",
+            "inode",
+            "mtime_ns",
+            "path",
+            "size"
+          ],
+          "additionalProperties": false
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "verification": {
+          "const": "file_sha256"
+        }
+      },
+      "required": [
+        "file_identity",
+        "name",
+        "path",
+        "sha256",
+        "size",
+        "verification"
+      ],
+      "additionalProperties": false
+    },
+    "comfyui": {
+      "type": "object",
+      "properties": {
+        "commit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tracked_dirty": {
+          "type": "boolean"
+        },
+        "tracked_status_sha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "commit",
+        "root",
+        "tracked_dirty",
+        "tracked_status_sha256",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "custom_nodes_used": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "devices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "vram_total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "index",
+          "name",
+          "type",
+          "vram_total"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "ffmpeg_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ffprobe_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "model_configuration": {
+      "type": "object",
+      "properties": {
+        "checkpoint_resolution": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "checkpoint_resolution",
+        "path",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "node_implementations": {
+      "type": "object",
+      "properties": {
+        "CheckpointLoaderSimple": {
+          "type": "object",
+          "properties": {
+            "module": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_sha256": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "module",
+            "origin",
+            "source_sha256"
+          ],
+          "additionalProperties": false
+        },
+        "ConditioningZeroOut": {
+          "type": "object",
+          "properties": {
+            "module": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_sha256": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "module",
+            "origin",
+            "source_sha256"
+          ],
+          "additionalProperties": false
+        },
+        "EmptyYuE2LatentAudio": {
+          "type": "object",
+          "properties": {
+            "module": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_sha256": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "module",
+            "origin",
+            "source_sha256"
+          ],
+          "additionalProperties": false
+        },
+        "KSampler": {
+          "type": "object",
+          "properties": {
+            "module": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_sha256": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "module",
+            "origin",
+            "source_sha256"
+          ],
+          "additionalProperties": false
+        },
+        "PreviewAny": {
+          "type": "object",
+          "properties": {
+            "module": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_sha256": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "module",
+            "origin",
+            "source_sha256"
+          ],
+          "additionalProperties": false
+        },
+        "PrimitiveString": {
+          "type": "object",
+          "properties": {
+            "module": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_sha256": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "module",
+            "origin",
+            "source_sha256"
+          ],
+          "additionalProperties": false
+        },
+        "PrimitiveStringMultiline": {
+          "type": "object",
+          "properties": {
+            "module": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_sha256": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "module",
+            "origin",
+            "source_sha256"
+          ],
+          "additionalProperties": false
+        },
+        "SaveAudioAdvanced": {
+          "type": "object",
+          "properties": {
+            "module": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_sha256": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "module",
+            "origin",
+            "source_sha256"
+          ],
+          "additionalProperties": false
+        },
+        "SeedNode": {
+          "type": "object",
+          "properties": {
+            "module": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_sha256": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "module",
+            "origin",
+            "source_sha256"
+          ],
+          "additionalProperties": false
+        },
+        "VAEDecodeAudio": {
+          "type": "object",
+          "properties": {
+            "module": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_sha256": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "module",
+            "origin",
+            "source_sha256"
+          ],
+          "additionalProperties": false
+        },
+        "YuE2GenerateMusic": {
+          "type": "object",
+          "properties": {
+            "module": {
+              "type": "string",
+              "minLength": 1
+            },
+            "origin": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_sha256": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "module",
+            "origin",
+            "source_sha256"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "CheckpointLoaderSimple",
+        "ConditioningZeroOut",
+        "EmptyYuE2LatentAudio",
+        "KSampler",
+        "PreviewAny",
+        "PrimitiveString",
+        "PrimitiveStringMultiline",
+        "SaveAudioAdvanced",
+        "SeedNode",
+        "VAEDecodeAudio",
+        "YuE2GenerateMusic"
+      ],
+      "additionalProperties": false
+    },
+    "official_cli": {
+      "type": "object",
+      "properties": {
+        "executable_sha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "executable_sha256",
+        "path",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "cuda_build": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cudnn": {
+          "type": "integer"
+        },
+        "identity_basis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "probe_interpreter": {
+          "type": "string",
+          "minLength": 1
+        },
+        "python": {
+          "type": "string",
+          "minLength": 1
+        },
+        "torch": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "cuda_build",
+        "cudnn",
+        "identity_basis",
+        "probe_interpreter",
+        "python",
+        "torch"
+      ],
+      "additionalProperties": false
+    },
+    "schema_version": {
+      "const": "render-environment/1"
+    },
+    "server_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "template_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "template_sha256": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "checkpoint",
+    "comfyui",
+    "custom_nodes_used",
+    "devices",
+    "ffmpeg_version",
+    "ffprobe_version",
+    "fingerprint",
+    "limitations",
+    "model_configuration",
+    "node_implementations",
+    "official_cli",
+    "runtime",
+    "schema_version",
+    "server_id",
+    "template_id",
+    "template_sha256"
+  ],
+  "additionalProperties": false
+}

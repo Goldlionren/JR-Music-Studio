@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:jr-ai-music-studio:score:1:representation",
+  "description": "Immutable derived representation; never replaces source ABC or authorizes edits. Shape validation is not a music validator.",
+  "type": "object",
+  "properties": {
+    "schema_version": {"const": "score/1"},
+    "parser_version": {"type": "string", "minLength": 1},
+    "address_version": {"const": "topology/1"},
+    "source_abc_sha256": {"$ref": "#/$defs/hash"},
+    "source_byte_length": {"type": "integer", "minimum": 1},
+    "status": {"enum": ["supported", "partial"]},
+    "headers": {"type": "object", "additionalProperties": {"type": "string"}},
+    "voices": {"type": "array", "items": {"type": "object", "properties": {"voice_id": {"type": "string"}, "header": {"type": "string"}}, "required": ["voice_id", "header"], "additionalProperties": false}},
+    "sections": {"type": "array", "items": {"$ref": "#/$defs/section"}},
+    "bars": {"type": "array", "items": {"$ref": "#/$defs/bar"}},
+    "events": {"type": "array", "items": {"$ref": "#/$defs/event"}},
+    "tokens": {"type": "array", "items": {"$ref": "#/$defs/token"}},
+    "parse_diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+    "lossless_roundtrip": {"const": true},
+    "semantics": {"type": "string"},
+    "representation_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "revision_id": {"$ref": "#/$defs/id"},
+    "created_at": {"type": "string", "format": "date-time"}
+  },
+  "required": ["schema_version", "parser_version", "address_version", "source_abc_sha256", "source_byte_length", "status", "headers", "voices", "sections", "bars", "events", "tokens", "parse_diagnostics", "lossless_roundtrip", "semantics"],
+  "additionalProperties": false,
+  "allOf": [{"if": {"required": ["representation_id"]}, "then": {"required": ["project_id", "revision_id", "created_at"]}}],
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{0,95}$"},
+    "hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "offset": {"type": "integer", "minimum": 0},
+    "duration": {"type": "object", "properties": {"numerator": {"type": "integer", "minimum": 0}, "denominator": {"type": "integer", "minimum": 1}}, "required": ["numerator", "denominator"], "additionalProperties": false},
+    "token": {
+      "type": "object",
+      "properties": {"kind": {"enum": ["field", "comment", "whitespace", "newline", "note", "rest", "measure_rest", "chord_symbol", "barline", "UNKNOWN"]}, "text": {"type": "string"}, "byte_start": {"$ref": "#/$defs/offset"}, "byte_end": {"$ref": "#/$defs/offset"}},
+      "required": ["kind", "text", "byte_start", "byte_end"], "additionalProperties": false
+    },
+    "diagnostic": {
+      "type": "object",
+      "properties": {"code": {"type": "string"}, "byte_start": {"$ref": "#/$defs/offset"}, "byte_end": {"$ref": "#/$defs/offset"}, "severity": {"enum": ["error", "warning"]}},
+      "required": ["code", "byte_start", "byte_end", "severity"], "additionalProperties": false
+    },
+    "section": {
+      "type": "object",
+      "properties": {"section_id": {"type": "string"}, "suggested_label": {"type": "string"}, "label_status": {"const": "suggested"}, "byte_start": {"$ref": "#/$defs/offset"}, "byte_end": {"$ref": "#/$defs/offset"}, "bars_per_voice": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}}},
+      "required": ["section_id", "suggested_label", "label_status", "byte_start", "byte_end", "bars_per_voice"], "additionalProperties": false
+    },
+    "bar": {
+      "type": "object",
+      "properties": {"bar_id": {"type": "string"}, "voice_id": {"type": "string"}, "section_id": {"type": "string"}, "ordinal": {"type": "integer", "minimum": 1}, "byte_start": {"$ref": "#/$defs/offset"}, "byte_end": {"$ref": "#/$defs/offset"}, "duration": {"$ref": "#/$defs/duration"}, "shared_rest_group": {"type": "boolean"}, "events": {"type": "array", "items": {"type": "string"}}},
+      "required": ["bar_id", "voice_id", "section_id", "ordinal", "byte_start", "byte_end", "duration", "shared_rest_group", "events"], "additionalProperties": false
+    },
+    "event": {
+      "type": "object",
+      "properties": {
+        "event_id": {"type": "string"}, "bar_id": {"type": "string"}, "voice_id": {"type": "string"}, "section_id": {"type": "string"},
+        "kind": {"enum": ["note", "rest", "measure_rest"]}, "byte_start": {"$ref": "#/$defs/offset"}, "byte_end": {"$ref": "#/$defs/offset"},
+        "duration": {"$ref": "#/$defs/duration"}, "pitch": {"type": "string"}, "pitch_byte_start": {"$ref": "#/$defs/offset"}, "pitch_byte_end": {"$ref": "#/$defs/offset"},
+        "midi_pitch": {"type": "integer"}, "tie_in": {"type": "boolean"}, "tie_out": {"type": "boolean"}, "tie_from": {"type": "string"},
+        "measure_count": {"type": "integer", "minimum": 1}, "virtual_rest_index": {"type": "integer", "minimum": 0}
+      },
+      "required": ["event_id", "bar_id", "voice_id", "section_id", "kind", "byte_start", "byte_end", "duration"], "additionalProperties": false,
+      "allOf": [{"if": {"properties": {"kind": {"const": "note"}}}, "then": {"required": ["pitch", "pitch_byte_start", "pitch_byte_end", "midi_pitch", "tie_in", "tie_out"]}}]
+    }
+  }
+}
