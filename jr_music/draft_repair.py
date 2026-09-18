@@ -2,6 +2,7 @@
 import json
 import re
 from copy import deepcopy
+from collections import Counter
 from .store import require,canonical,sha,new_id,now,StoreError
 from .score import parse_abc
 
@@ -50,16 +51,39 @@ def diagnose(command,result):
     spec=result.get('production_specs');arr=spec.get('arr_spec') if isinstance(spec,dict) else None
     form=arr.get('form',[]) if isinstance(arr,dict) else []
     expected=sum(s.get('bars',0) for s in form) if isinstance(form,list) and all(isinstance(s,dict) and type(s.get('bars')) is int for s in form) else None
+    if not isinstance(form,list):form=[]
     if expected is not None and any(n!=expected for n in counts.values()):
         issues.append(dict(code='SPEC_SCORE_MISMATCH',message=f'仅修正明显记谱外壳后：实际小节 {counts}，规格总计 {expected}。依据确认方案统一结构，不能只改总数。'))
+    # Use explicit source markers, including instrumental (not an editable
+    # parser section), to show precisely which passage has the wrong length.
+    preview_bytes=preview.encode()
+    markers=list(re.finditer(rb'^%\s*(intro|verse|pre[-_ ]?chorus|chorus|instrumental|bridge|outro)(?:[ _-]*\d+)?\s*$',preview_bytes,re.M|re.I))
+    sections=[]
+    for i,marker in enumerate(markers):
+        stop=markers[i+1].start() if i+1<len(markers) else len(preview_bytes)
+        for voice in counts:
+            bars=[b for b in parsed['bars'] if b['voice_id']==voice and marker.end()<=b['byte_start']<stop]
+            if bars:
+                row=dict(marker=marker.group(1).decode(),voice=voice,first_bar=bars[0]['ordinal'],last_bar=bars[-1]['ordinal'],bars=len(bars))
+                sections.append(row)
+                if len(markers)==len(form) and isinstance(form[i],dict) and type(form[i].get('bars')) is int and len(bars)!=form[i]['bars']:
+                    issues.append(dict(code='SPEC_SECTION_LENGTH_MISMATCH',message=f'第 {i+1} 段 {row["marker"]}：第 {row["first_bar"]}–{row["last_bar"]} 小节，共 {len(bars)} 小节；对应规格为 {form[i]["bars"]} 小节。'))
     if parsed['status']=='supported' and isinstance(lyrics,str):
         from .score_lyrics import validate
+        per_bar=Counter(e['bar_id'] for e in parsed['events'] if e['kind']=='note')
+        note_counts={(b['voice_id'],b['ordinal']):per_bar[b['bar_id']] for b in parsed['bars']}
         for row in result.get('lyric_map',[]) if isinstance(result.get('lyric_map'),list) else []:
             try:validate(preview,lyrics,[row])
             except (StoreError,ValueError,TypeError,KeyError) as exc:
+                ranges=[]
+                if isinstance(row,dict) and isinstance(row.get('units'),list):
+                    for unit in row['units']:
+                        if isinstance(unit,list) and len(unit)==5 and all(type(n) is int for n in unit[1:]):
+                            bounds={str(n):note_counts.get((row.get('voice'),n),0) for n in (unit[1],unit[3])}
+                            ranges.append(dict(text=str(unit[0])[:100],range=unit[1:],bar_note_counts=bounds))
                 issues.append(dict(code=getattr(exc,'code',str(exc)),lyric_line=row.get('line') if isinstance(row,dict) else None,
-                    message='配谱范围、歌词或音符编号无效；休止不计入音符编号。'))
-    return dict(issues=issues[:64],notation_preview_only=True,bar_counts=counts,spec_bars=expected)
+                    message='配谱范围、歌词或音符编号无效；休止不计入音符编号。',unit_ranges=ranges))
+    return dict(issues=issues[:64],notation_preview_only=True,bar_counts=counts,spec_bars=expected,section_inventory=sections)
 
 def context(store,command):
     repair=command.get('draft_repair')

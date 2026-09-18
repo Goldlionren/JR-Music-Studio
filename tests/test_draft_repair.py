@@ -112,4 +112,14 @@ class DraftRepairTests(unittest.TestCase):
         self.assertEqual(d['issues'][-1]['code'],'SCORE_LYRIC_MAP_RANGE')
         self.assertEqual(d['issues'][-1]['lyric_line'],12)
 
+    def test_diagnostics_show_actual_section_length_and_note_bounds(self):
+        result=dict(abc=ABC.split('[V:')[0]+'% intro\nz8|\n% instrumental\nC2 D2 E2 z2|C8|\n',
+            lyrics='[verse]\n原词',lyric_map=[{'line':1,'voice':'Vocal','units':[['原词',2,1,2,4]]}],
+            production_specs={'arr_spec':{'form':[{'bars':1},{'bars':1}]}})
+        d=repair.diagnose(self.c,result)
+        self.assertEqual(d['section_inventory'][-1]['bars'],2)
+        self.assertTrue(any(i['code']=='SPEC_SECTION_LENGTH_MISMATCH' for i in d['issues']))
+        problem=next(i for i in d['issues'] if i.get('lyric_line')==1)
+        self.assertEqual(problem['unit_ranges'][0]['bar_note_counts'],{'2':3})
+
 if __name__=='__main__':unittest.main()
