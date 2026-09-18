@@ -158,7 +158,8 @@ class ProducerService:
         if command['grant']:
             parsed = self.store.get_score(project_id, command['source_revision_id'], command['grant']['representation_id'])
         from . import songcraft
-        result=dict(command=command, source=source, score=parsed, songcraft_materials=songcraft.resolve(self.store,command))
+        from .draft_repair import context
+        result=dict(repair_context=context(self.store,command),command=command, source=source, score=parsed, songcraft_materials=songcraft.resolve(self.store,command))
         if command['kind']=='direction':
             from .score_lyrics import read
             result.update(score_lyric_contract='score-lyrics/1',source_lyric_map=read(self.store,project_id,command['source_revision_id'])['rows'])
@@ -225,6 +226,9 @@ class ProducerService:
         if result['state']=='completed':
             from .quality_loop import resume_pending
             resume_pending(self,project_id)
+        if result['state']=='needs_attention' and result.get('draft_repair'):
+            from .draft_repair import resume
+            resume(self)
         return result
 
     def feedback(self, project_id, revision_id, render_id, content, *, actor, key):

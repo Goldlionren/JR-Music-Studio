@@ -98,7 +98,8 @@ class CreationService:
             with self.store.connect() as db:
                 history = self._conversation(db, command)
         from . import songcraft
-        return dict(songcraft_materials=songcraft.resolve(self.store,command),score_lyric_contract='score-lyrics/1' if command['kind']=='compose' else None,command={k:v for k,v in command.items() if k != 'conversation'}, conversation=history,
+        from .draft_repair import context
+        return dict(repair_context=context(self.store,command),songcraft_materials=songcraft.resolve(self.store,command),score_lyric_contract='score-lyrics/1' if command['kind']=='compose' else None,command={k:v for k,v in command.items() if k != 'conversation'}, conversation=history,
             project_title=self.store.get_project(command['project_id'])['title'])
 
     def propose(self, project_id, command_id, result, provenance, *, actor, format_check=None):
@@ -125,6 +126,8 @@ class CreationService:
                 dict(command_id=command_id, result_sha256=digest))
             return digest
         result_sha = self.store._operation(actor, command_id+'_creative_raw', raw_payload, record)
+        from .draft_repair import verify_lyrics
+        verify_lyrics(self.store,command,result)
         revision_id = render_id = None
         if command['kind'] == 'plan':
             require(set(result) == {'reply','plan'}, 'INVALID_CREATIVE_PROPOSAL')

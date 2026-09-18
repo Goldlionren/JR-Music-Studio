@@ -320,6 +320,20 @@ not locked. Use explicit bars and % intro / % verse / % chorus / % bridge marker
 '''+prompt[end:]
         prompt=prompt.replace('Do not output timestamps or insert w: lyrics into ABC.',
             'Do not output timestamps. Keep lyric_map and the ABC w: syllables consistent.')
+    if packet.get('repair_context'):
+        prompt += '''\nThis is a bounded REPAIR of repair_context.original_result, not a new song.
+Use the frozen original reply and precise diagnostics. Keep its lyrics EXACTLY,
+its story and principal sung melody. The confirmed plan and explicit locks remain
+authoritative. Fix notation, bar counts, lyric_map and ARR/LYR specs together.
+Use plain V: Vocal lines, never inline [V:...] headers. Chord annotations are
+"Am"a8, not ["Am"a8. Do not add stray brackets around music lines.
+Count every actual bar including instrumental/rest bars; rebuild global lyric_map
+note indices excluding rests. Reconcile instrumental/outro lengths to the approved
+plan instead of merely changing a total in the specs. Preserve sung passages as
+far as possible; explain necessary changes in summary. Do not rewrite lyrics,
+relax locks, change the server/seed/duration, render, or claim validation passed.
+Return the same complete JSON schema requested above, not a patch or commentary.
+'''
     prompt = 'JR_TASK '+packet['command'].get('command_id','fixture')+'\n'+prompt
     prompt += songcraft_prompt(packet,directory)
     prompt += json.dumps({k:v for k,v in packet.items() if k!='songcraft_materials'}, ensure_ascii=False)

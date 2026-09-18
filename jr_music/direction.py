@@ -70,6 +70,8 @@ def propose(producer, project_id, command_id, result, provenance, *, actor):
         store._event(db, project_id, 'direction_result_received', actor, dict(command_id=command_id,result_sha256=digest))
         return digest
     digest = store._operation(actor,command_id+'_direction_raw',payload,received)
+    from .draft_repair import verify_lyrics
+    verify_lyrics(store,command,result)
     source = store.get_revision(project_id,command['source_revision_id'])
     require(source['revision']['snapshot_sha256']==command['source_snapshot_sha256'], 'STALE_BASE')
     snapshot = source['snapshot']

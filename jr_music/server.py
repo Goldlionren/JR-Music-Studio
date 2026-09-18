@@ -133,6 +133,8 @@ def make_server(store, credentials, port=8766, renders=None, hermes=None, librar
                     agent_status[actor] = dict(state=value['state'], seen_at=time.time())
                     from .quality_loop import resume_pending
                     resume_pending(producer)
+                    from .draft_repair import resume
+                    resume(producer)
                     result = dict(recorded=True)
                 elif parts == ['projects'] and method == 'GET':
                     result = store.list_projects()
@@ -147,6 +149,10 @@ def make_server(store, credentials, port=8766, renders=None, hermes=None, librar
                         result = store.list_revisions(project_id)
                     elif len(parts) == 3 and parts[2] == 'events' and method == 'GET':
                         result = store.events(project_id)
+                    elif len(parts)==5 and parts[2]=='commands' and parts[4]=='draft-repair' and method=='POST':
+                        from .draft_repair import start
+                        value=self.body(('idempotency_key',))
+                        result=start(producer,project_id,parts[3],actor=actor,key=value['idempotency_key'])
                     elif len(parts)==5 and parts[2]=='renders' and parts[4].startswith('quality'):
                         from .quality_loop import route
                         result=route(producer,project_id,parts[3],parts[4],method,self.body,actor=actor)

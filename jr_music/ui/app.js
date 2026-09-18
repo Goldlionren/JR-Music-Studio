@@ -105,6 +105,9 @@ const messages = {
   TEMPO_LOCK_VIOLATION: "回复改动了已锁定速度，系统已拦截。",
   KEY_LOCK_VIOLATION: "回复改动了已锁定调性，系统已拦截。",
   MANUAL_SCORE_INVALID: "修改后的谱面未通过检查，请先预览并调整拍数或记谱。",
+  REPAIR_LYRICS_CHANGED: "修复改动了应保留的歌词，已停止；没有生成音频。",
+  DRAFT_REPAIR_UNAVAILABLE: "该任务不能继续自动修复，请查看错误及修复轮数。",
+  REPAIR_ALREADY_RETRIED: "该任务已有新的尝试，请查看新任务。",
   NO_MUSICAL_CHANGE: "ABC、歌词和生成风格没有实际变化。只改规格说明不会改变生成输入；可重新尝试，在保留项之外落实修改。",
   ANALYSIS_PREFLIGHT_FAILED: "分析工作流在预检时被拒绝，未提交 GPU 任务。可在对应音频的分析面板重新准备。",
   ANALYSIS_RECEIPT_UNKNOWN: "分析提交回执不完整，请在对应音频面板继续核对；系统不会自动重复提交。",
@@ -991,13 +994,14 @@ function activity() {
       }[job?.state] || "生成 / 核对中"
     );
   };
+  const repairedParents = new Set(state.data.commands.filter(c => c.draft_repair).map(c => c.retry_of));
   $("commands").innerHTML = state.data.commands.length
     ? state.data.commands
         .slice()
         .reverse()
         .map(
           (c) =>
-            `<div class="command-row"><span class="command-state">${esc(commandStatus(c))}</span><div class="command-content">${c.experiment_arm ? `试验 ${esc(c.experiment_arm)} · ` : ""}${esc(names[c.assigned_to])} · ${esc(c.instruction)}<small>${c.kind === "analyze" ? esc(label(c.source_revision_id))+" → 音频分析" : c.kind === "plan" ? "创作讨论" : c.kind === "compose" ? "已确认方案 → 原创首版" : esc(label(c.source_revision_id)) + " → " + (c.result_revision_id ? esc(label(c.result_revision_id)) : "新候选")} · ${date(c.created_at)}</small><small>${esc(detail(c))}</small>${c.production_binding ? `<small>生成服务器：${esc(c.production_binding.mcp_alias)}</small>` : ""}${c.songcraft ? `<small>创作方法：${esc(c.songcraft.label)} · v${esc(c.songcraft.version)} · ${esc(c.songcraft.sha256.slice(0,8))}</small>` : ""}${c.format_check?`<small>${c.format_check.status==='repaired'?`已自动修复回复格式（${c.format_check.operation_count} 项），词曲原文未改`:'回复格式检查通过'} · 原回复 ${esc(c.format_check.raw_sha256.slice(0,8))} · 校验记录 ${esc(c.format_check.report_sha256.slice(0,8))}</small>`:''}${c.issue?`<p class="hint">${esc(messages[c.issue]||c.issue)}</p>`:''}</div>${c.state === "completed" && c.result_revision_id ? `<button data-open="${c.result_revision_id}">试听新候选</button>` : c.state === "queued" || c.state === "preparing" ? `<button data-cancel="${c.command_id}">撤回</button>` : c.render_id ? `<button data-refresh="${c.command_id}">核对进度</button>` : c.can_recover_format ? `<button data-recover="${c.command_id}">检查原回复并继续</button><button data-retry="${c.command_id}">重新创作</button>` : c.can_retry ? `<button data-retry="${c.command_id}">重新尝试</button>` : ""}</div>`,
+            `<div class="command-row"><span class="command-state">${esc(commandStatus(c))}</span><div class="command-content">${c.experiment_arm ? `试验 ${esc(c.experiment_arm)} · ` : ""}${esc(names[c.assigned_to])} · ${esc(c.instruction)}<small>${c.kind === "analyze" ? esc(label(c.source_revision_id))+" → 音频分析" : c.kind === "plan" ? "创作讨论" : c.kind === "compose" ? "已确认方案 → 原创首版" : esc(label(c.source_revision_id)) + " → " + (c.result_revision_id ? esc(label(c.result_revision_id)) : "新候选")} · ${date(c.created_at)}</small><small>${esc(detail(c))}</small>${c.production_binding ? `<small>生成服务器：${esc(c.production_binding.mcp_alias)}</small>` : ""}${c.songcraft ? `<small>创作方法：${esc(c.songcraft.label)} · v${esc(c.songcraft.version)} · ${esc(c.songcraft.sha256.slice(0,8))}</small>` : ""}${c.format_check?`<small>${c.format_check.status==='repaired'?`已自动修复回复格式（${c.format_check.operation_count} 项），词曲原文未改`:'回复格式检查通过'} · 原回复 ${esc(c.format_check.raw_sha256.slice(0,8))} · 校验记录 ${esc(c.format_check.report_sha256.slice(0,8))}</small>`:''}${c.draft_diagnostics?`<details><summary>查看原稿校验诊断（${c.draft_diagnostics.issues.length} 项）</summary>${c.draft_diagnostics.issues.map(d=>`<p class="hint">${esc(d.code)}${d.line?` · ABC 第 ${d.line} 行`:""}${d.lyric_line?` · 歌词第 ${d.lyric_line} 行`:""}<br>${esc(d.message||d.excerpt||"")}</p>`).join("")}</details>`:""}${c.draft_repair?`<small>原稿定向修复 · 第 ${c.draft_repair.round}/${c.draft_repair.max_rounds} 轮 · 保留歌词，校验通过后生成</small>`:""}${c.draft_repair && c.state==="needs_attention" && c.draft_repair.round>=c.draft_repair.max_rounds?`<p class="hint">已达到本次修复上限，自动修复已停止。</p>`:""}${c.issue?`<p class="hint">${esc(messages[c.issue]||c.issue)}</p>`:''}</div>${c.state === "completed" && c.result_revision_id ? `<button data-open="${c.result_revision_id}">试听新候选</button>` : c.state === "queued" || c.state === "preparing" ? `<button data-cancel="${c.command_id}">撤回</button>` : c.render_id ? `<button data-refresh="${c.command_id}">核对进度</button>` : repairedParents.has(c.command_id) ? `<small>已转入后续修复任务，原记录保留</small>` : c.can_repair_draft ? `<button data-repair="${c.command_id}">按诊断修复原稿并继续（最多2轮）</button>` : c.can_recover_format ? `<button data-recover="${c.command_id}">检查原回复并继续</button><button data-retry="${c.command_id}">重新创作</button>` : c.can_retry ? `<button data-retry="${c.command_id}">重新尝试</button>` : ""}</div>`,
         )
         .join("")
     : '<div class="empty">创作讨论、首版生成和后续修改的进度都会保存在这里。</div>';
@@ -1015,7 +1019,7 @@ function activity() {
           $("compare").scrollIntoView({ block: "center" });
         }),
     );
-  for (const action of ["cancel", "refresh", "retry", "recover"])
+  for (const action of ["cancel", "refresh", "retry", "recover", "repair"])
     $("commands")
       .querySelectorAll(`[data-${action}]`)
       .forEach(
@@ -1024,7 +1028,7 @@ function activity() {
             b.disabled = true;
             try {
               await mutate(
-                route(`/commands/${b.dataset[action]}/${action==='recover'?'format-recover':action}`),
+                route(`/commands/${b.dataset[action]}/${action==='recover'?'format-recover':action==='repair'?'draft-repair':action}`),
                 {},
               );
               await loadProject();

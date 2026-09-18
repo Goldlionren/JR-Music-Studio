@@ -182,7 +182,10 @@ def make_console(libraries, port=8767, agent_status=None):
                                 events=store.events(pid)
                                 formats={e['command_id']:e for e in events if e['type']=='creative_format_checked'}
                                 received={e['command_id'] for e in events if e['type'] in ('creation_result_received','direction_result_received')}
+                                from .draft_repair import eligible,inspection
                                 commands=[dict(c,can_retry=can_retry(c),can_recover_format=can_recover_format(c) and c['command_id'] not in received,
+                                    can_repair_draft=eligible(c) and c['command_id'] in received,
+                                    draft_diagnostics=inspection(store,c),
                                     format_check=formats.get(c['command_id'])) for c in producer.list(pid)]
                                 result = dict(project=store.get_project(pid), revisions=revisions, commands=commands,
                                     decisions=decisions, historical_feedback=historical_feedback, events=store.events(pid), agents=list(bridge.bindings) if bridge else [])
@@ -244,11 +247,14 @@ def make_console(libraries, port=8767, agent_status=None):
                                 result = manual_edit.preview(store,pid,rid,**value) if parts[3]=='manual-preview' else manual_edit.save(store,pid,rid,actor='producer',key=key,**value)
                             elif len(parts) == 6 and parts[3] == 'commands' and method == 'POST':
                                 value = self.body(('idempotency_key',))
-                                require(parts[5] in ('cancel','refresh','retry','format-recover'), 'INVALID_ROUTE')
+                                require(parts[5] in ('cancel','refresh','retry','format-recover','draft-repair'), 'INVALID_ROUTE')
                                 command = producer.get(pid, parts[4])
                                 if parts[5] == 'refresh' and command['render_id'] and bridge:
                                     bridge.reconcile(pid, command['render_id'], actor=command['assigned_to'])
-                                if parts[5] == 'format-recover':
+                                if parts[5] == 'draft-repair':
+                                    from .draft_repair import start
+                                    result=start(producer,pid,parts[4],actor='producer',key=value['idempotency_key'])
+                                elif parts[5] == 'format-recover':
                                     from .command_status import recover_format
                                     result = recover_format(producer,pid,parts[4],actor='producer',key=value['idempotency_key'])
                                 elif parts[5] == 'retry':
