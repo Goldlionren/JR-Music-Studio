@@ -73,6 +73,23 @@ def make_console(libraries, port=8767, agent_status=None):
             require(isinstance(value, dict) and set(required) <= value.keys() <= set(required)|set(optional), 'INVALID_FIELDS')
             return value
 
+        def discard_rejected_body(self):
+            # HTTP/1.0 closes after the reply. Unread POST bytes can cause a
+            # Windows TCP reset that hides the 403 from the browser. Drain only
+            # a bounded body/time; never parse or authorize the rejected data.
+            size=self.headers.get('Content-Length','')
+            if not size.isdigit() or not 0<int(size)<=2*1024*1024:return
+            remaining=int(size);deadline=time.monotonic()+0.25
+            previous=self.connection.gettimeout()
+            try:
+                while remaining and time.monotonic()<deadline:
+                    self.connection.settimeout(max(0.001,deadline-time.monotonic()))
+                    chunk=self.rfile.read1(min(remaining,65536))
+                    if not chunk:break
+                    remaining-=len(chunk)
+            except OSError:pass
+            finally:self.connection.settimeout(previous)
+
         def media(self, store, pid, aid):
             asset, stream = store.open_asset(pid, aid)
             with stream:
@@ -286,6 +303,7 @@ def make_console(libraries, port=8767, agent_status=None):
                 self.wfile.write(raw)
             except StoreError as exc:
                 status = 403 if exc.code in ('CSRF_DENIED','INVALID_HOST','CROSS_ORIGIN_DENIED','SESSION_REQUIRED') else 409 if 'CONFLICT' in exc.code or exc.code == 'STALE_BASE' else 400
+                if status==403:self.discard_rejected_body()
                 self.json(status, dict(ok=False,error=dict(code=exc.code)))
             except (ValueError, TypeError, KeyError):
                 self.json(400, dict(ok=False,error=dict(code='INVALID_REQUEST')))

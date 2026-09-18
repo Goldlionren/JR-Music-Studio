@@ -95,6 +95,30 @@ class PublicReleaseTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=5)
 
+    def test_rejected_post_returns_403_when_body_follows_headers(self):
+        from http.client import HTTPConnection
+        import time
+        server=make_console({'studio':('Studio',self.store,None)},port=0)
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        try:
+            for _ in range(3):
+                connection=HTTPConnection('127.0.0.1',server.server_port,timeout=3)
+                try:
+                    body=canonical({'title':'Must not create','idempotency_key':'rejected'})
+                    connection.putrequest('POST','/api/studio/projects')
+                    connection.putheader('Origin',f'http://127.0.0.1:{server.server_port}')
+                    connection.putheader('Content-Type','application/json')
+                    connection.putheader('Content-Length',str(len(body)))
+                    connection.endheaders()
+                    time.sleep(0.02)  # Reproduce headers/body arriving separately.
+                    connection.send(body)
+                    response=connection.getresponse()
+                    self.assertEqual(response.status,403)
+                    self.assertEqual(json.loads(response.read())['error']['code'],'CSRF_DENIED')
+                finally:connection.close()
+            self.assertEqual(len(self.store.list_projects()),1)
+        finally:server.shutdown();server.server_close();thread.join()
+
     def test_configuration_example_can_load_without_contacting_hosts(self):
         config = json.loads((ROOT/'config/hermes-deployment.example.json').read_text(encoding='utf-8'))
         workspace = str(Path(self.temp.name)/'renders')
