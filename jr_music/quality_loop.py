@@ -107,9 +107,19 @@ def advance(producer,pid,cid,*,retry_analysis=False):
                 preserve=cycle['preserve'],songcraft_selection='professional',mcp_alias=cycle['mcp_alias'])
             cycle=update(producer,pid,cid,command_id=command['command_id'],state='revising',issue=None)
         command=producer.get(pid,cycle['command_id'])
+        # Follow only a retry already explicitly created by the producer. Never
+        # create retries here, or replace a command that may have rendered.
+        if command['state']=='needs_attention' and not command.get('render_id'):
+            child=next((c for c in producer.list(pid) if c.get('retry_of')==command['command_id']),None)
+            if child:
+                cycle=update(producer,pid,cid,command_id=child['command_id'],state='revising',issue=None,
+                    previous_command_ids=cycle.get('previous_command_ids',[])+[command['command_id']])
+                command=child
         if command['state'] in ('needs_attention','cancelled'):
             return update(producer,pid,cid,state='needs_attention',issue=command.get('issue') or command['state'])
-        if command['state']!='completed':return cycle
+        if command['state']!='completed':
+            if cycle['state']=='needs_attention':return update(producer,pid,cid,state='revising',issue=None)
+            return cycle
         rid=command['render_id']
         require(rid is not None and command['result_revision_id']!=cycle['source_revision_id'],'QUALITY_RESULT_REQUIRED')
         if cycle['result_render_id']!=rid:cycle=update(producer,pid,cid,result_render_id=rid,state='analyzing',issue=None)
@@ -135,7 +145,11 @@ def resume_pending(producer,pid=None):
     for project in projects:
         project_id=project['project_id']
         for cycle in records(producer.store,project_id).values():
-            if cycle['state'] not in ('preparing','revising','analyzing'):continue
+            if cycle['state']=='needs_attention' and cycle.get('command_id') and not cycle.get('result_render_id'):
+                command=producer.get(project_id,cycle['command_id'])
+                retry=any(c.get('retry_of')==command['command_id'] for c in producer.list(project_id))
+                if command['state'] not in ('queued','working','rendering','completed') and not retry:continue
+            elif cycle['state'] not in ('preparing','revising','analyzing'):continue
             try:advance(producer,project_id,cycle['cycle_id'])
             except Exception as exc:
                 update(producer,project_id,cycle['cycle_id'],state='needs_attention',

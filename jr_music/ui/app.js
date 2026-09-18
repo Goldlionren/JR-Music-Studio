@@ -105,7 +105,7 @@ const messages = {
   TEMPO_LOCK_VIOLATION: "回复改动了已锁定速度，系统已拦截。",
   KEY_LOCK_VIOLATION: "回复改动了已锁定调性，系统已拦截。",
   MANUAL_SCORE_INVALID: "修改后的谱面未通过检查，请先预览并调整拍数或记谱。",
-  NO_MUSICAL_CHANGE: "内容没有变化，无需另存版本。",
+  NO_MUSICAL_CHANGE: "ABC、歌词和生成风格没有实际变化。只改规格说明不会改变生成输入；可重新尝试，在保留项之外落实修改。",
   ANALYSIS_PREFLIGHT_FAILED: "分析工作流在预检时被拒绝，未提交 GPU 任务。可在对应音频的分析面板重新准备。",
   ANALYSIS_RECEIPT_UNKNOWN: "分析提交回执不完整，请在对应音频面板继续核对；系统不会自动重复提交。",
   ANALYSIS_HISTORY_PENDING: "暂未找到分析完成记录，可继续核对已有提交。",

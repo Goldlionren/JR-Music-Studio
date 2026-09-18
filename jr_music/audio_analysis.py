@@ -141,17 +141,23 @@ def run(producer,pid,cid):
     try:
         c=producer.get(pid,cid)
         report_path=directory/'transcription.json'
+        failure_path=directory/'transcription-failure.json'
         if c.get('analysis_mode')!='lyrics':
             expected=json.loads((directory/'workflow.api.json').read_text())
             report_path=directory/'transcription.json'
-            if not report_path.exists():
+            if not report_path.exists() and not failure_path.exists():
                 deadline=time.monotonic()+900
                 while time.monotonic()<deadline:
                     history=fetch('/history?max_items=100')
                     matched=[(identifier,row) for identifier,row in history.items() if canonical(row.get('prompt',[None,None,{}])[2])==canonical(expected)]
                     if len(matched)>1:require(False,'AMBIGUOUS_ANALYSIS_HISTORY')
                     if matched:
-                        prompt_id,row=matched[0];require(row['status']['status_str']=='success','SHEETSAGE_ANALYSIS_FAILED')
+                        prompt_id,row=matched[0]
+                        if row['status']['status_str']=='error':
+                            write(failure_path,dict(code='SHEETSAGE_ANALYSIS_FAILED',prompt_id=prompt_id,
+                                source_audio_sha256=c['source_asset']['sha256'],history=row))
+                            break
+                        require(row['status']['status_str']=='success','SHEETSAGE_ANALYSIS_FAILED')
                         abc=row['outputs']['4']['text'][0];require(isinstance(abc,str),'INVALID_TRANSCRIPTION')
                         parsed=parse_abc(abc.encode());plan=audition(parsed)
                         report=dict(status='transcribed_estimate',project_id=pid,revision_id=c['source_revision_id'],render_id=c['source_render_id'],
@@ -162,7 +168,7 @@ def run(producer,pid,cid):
                             audition=plan,workflow_verified=True,history_sha256=sha(canonical(row)),acoustic_accuracy='not_measured')
                         write(directory/'history.json',row);write(report_path,report);break
                     time.sleep(3)
-                require(report_path.exists(),'ANALYSIS_HISTORY_PENDING')
+                require(report_path.exists() or failure_path.exists(),'ANALYSIS_HISTORY_PENDING')
         output=directory/'asr.json'
         if not output.exists():
             command=[str(ROOT/'data/audio-analysis-env/Scripts/python.exe'),str(ROOT/'tools/analyze_audio.py'),
@@ -171,11 +177,15 @@ def run(producer,pid,cid):
                 result=subprocess.run(command,stdout=log,stderr=log,timeout=1800)
             require(result.returncode==0 and output.exists(),'ASR_ANALYSIS_FAILED')
         asr=json.loads(output.read_text(encoding='utf-8'));require(asr['source_audio_sha256']==c['source_asset']['sha256'],'ANALYSIS_AUDIO_MISMATCH')
-        if c.get('analysis_mode')!='lyrics':verify_report(c,json.loads(report_path.read_text(encoding='utf-8')))
+        if c.get('analysis_mode')!='lyrics' and report_path.exists():verify_report(c,json.loads(report_path.read_text(encoding='utf-8')))
         with producer.store.connect() as db:
             db.execute('BEGIN IMMEDIATE');current=producer._get(db,pid,cid)
             current.update(state='completed',issue=None,asr_sha256=producer.store._blob(db,canonical(asr)))
-            if c.get('analysis_mode')!='lyrics':current['transcription_sha256']=producer.store._blob(db,report_path.read_bytes())
+            if c.get('analysis_mode')!='lyrics':
+                if report_path.exists():current['transcription_sha256']=producer.store._blob(db,report_path.read_bytes())
+                else:
+                    current['transcription_issue']='SHEETSAGE_ANALYSIS_FAILED'
+                    current['transcription_failure_sha256']=producer.store._blob(db,failure_path.read_bytes())
             producer._save(db,current,'audio_analyzer');db.commit()
     except Exception as exc:
         code=getattr(exc,'code',None) or ('AUDIO_ANALYSIS_TIMEOUT' if isinstance(exc,subprocess.TimeoutExpired) else type(exc).__name__.upper())
@@ -194,7 +204,7 @@ def read(producer,pid,render_id):
     if not c:return dict(status='not_analyzed')
     result=dict(status=c['state'],command_id=c['command_id'],issue=c['issue'],can_restart=c.get('issue')=='ANALYSIS_PREFLIGHT_FAILED',
         can_resume=bool(c.get('analysis_dispatched') or c.get('analysis_mode')=='lyrics') and c['state']!='completed' and c.get('issue')!='ANALYSIS_PREFLIGHT_FAILED',
-        analysis_mode=c.get('analysis_mode','full'))
+        analysis_mode=c.get('analysis_mode','full'),transcription_issue=c.get('transcription_issue'))
     directory=folder(c['command_id'])
     for key,name in [('transcription','transcription.json'),('asr','asr.json'),('progress','asr.progress.json')]:
         path=directory/name

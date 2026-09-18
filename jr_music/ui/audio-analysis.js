@@ -51,6 +51,7 @@ const AudioAnalysis=(()=>{
         analysis=report;timeline=times;
         const labels={not_analyzed:'尚未分析',preparing:'准备音频',queued:'等待音乐伙伴',working:'通过 Comfy MCP 提交转谱',analyzing:'核对转谱并识别歌词',completed:'分析完成',needs_attention:'分析需要处理',cancelled:'分析已撤回'};
         status.textContent=(labels[report.status]||report.status)+(report.status==='completed'&&report.asr?` · 整段 ${report.asr.measurements.duration.toFixed(1)} 秒已分析`:report.status==='analyzing'?report.stage==='recognizing_lyrics'?' · 本机识别歌词':' · 等待转谱结果':'')+(report.status!=='completed'&&report.progress?` · 已识别至 ${report.progress.through_seconds.toFixed(1)} 秒`:'')+(report.issue?' · '+error({message:report.issue}):'');
+        if(report.transcription_issue)status.textContent='歌词与波形分析完成；SheetSage2 转谱失败，暂无实际旋律谱。质量检查可继续。';
         const canAddTranscription=report.analysis_mode==='lyrics'&&report.status==='completed';
         find('.analysis-start').disabled=(report.status!=='not_analyzed'&&!report.can_restart&&!canAddTranscription)||!agents?.length;
         find('.analysis-start').textContent=canAddTranscription?'追加旋律转谱':report.can_restart?'重新准备并分析':'分析这次音频';

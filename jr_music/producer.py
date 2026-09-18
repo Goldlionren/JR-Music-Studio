@@ -135,6 +135,8 @@ class ProducerService:
     def claim(self, project_id, command_id, *, actor):
         current = self.get(project_id, command_id, actor)
         claim_key = command_id + ('_format_recovery' if current.get('format_recovery') else '')
+        if current.get('format_recovery',{}).get('repair_revision'):
+            claim_key += '_'+current['format_recovery']['repair_revision']
         def action(db):
             command = self._get(db, project_id, command_id, actor)
             require(command['state'] == 'queued', 'COMMAND_ALREADY_CLAIMED')

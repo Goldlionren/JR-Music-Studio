@@ -1,8 +1,9 @@
 """Small, authenticated progress reports and explicit retry lineage."""
 from copy import deepcopy
 from .store import require, text, new_id, now
+from .creative_format import REPAIR_REVISION
 
-RETRYABLE = {'TIMEOUTEXPIRED','HERMES_PROVIDER_TIMEOUT','INVALID_CREATIVE_RESPONSE_JSON','INVALID_CREATIVE_RESPONSE_FIELDS',
+RETRYABLE = {'NO_MUSICAL_CHANGE','TIMEOUTEXPIRED','HERMES_PROVIDER_TIMEOUT','INVALID_CREATIVE_RESPONSE_JSON','INVALID_CREATIVE_RESPONSE_FIELDS',
     'CREATIVE_JSON_DUPLICATE_KEY','CREATIVE_FORMAT_AMBIGUOUS','CREATIVE_RESPONSE_TRUNCATED','CREATIVE_FORMAT_COMPLETION_UNVERIFIED','CREATIVE_RECOVERY_SOURCE_MISSING',
     'PRODUCTION_SPECS_REQUIRED','INVALID_PRODUCTION_SPECS','SPEC_SCORE_MISMATCH','SPEC_LYRICS_MISMATCH','ABC_LYRICS_MISMATCH',
     'LYRIC_DENSITY_LIMIT','LYRIC_DENSITY_UNMEASURABLE',
@@ -41,7 +42,7 @@ FORMAT_RECOVERABLE={'INVALID_CREATIVE_RESPONSE_JSON','INVALID_CREATIVE_RESPONSE_
 
 def can_recover_format(command):
     return (command['kind'] in ('plan','compose','direction') and command['state']=='needs_attention'
-        and not command.get('format_recovery')
+        and command.get('format_recovery',{}).get('repair_revision')!=REPAIR_REVISION
         and command.get('issue') in FORMAT_RECOVERABLE and not any(command.get(k) for k in ('render_id','result_revision_id','result_sha256')))
 
 
@@ -58,7 +59,7 @@ def recover_format(producer,pid,cid,*,actor,key):
         if source['kind']=='plan':
             latest=[c for c in producer._commands(db,pid).values() if c['kind']=='plan'][-1]
             require(latest['command_id']==cid,'STALE_CREATION_PLAN')
-        request=dict(requested_at=now(),previous_issue=source['issue'],mode='existing_response_only')
+        request=dict(requested_at=now(),previous_issue=source['issue'],mode='existing_response_only',repair_revision=REPAIR_REVISION)
         producer.store._event(db,pid,'creative_format_recovery_requested',actor,dict(command_id=cid,**request))
         source.update(state='queued',issue=None,format_recovery=request)
         source['progress']={**source.get('progress',{}),'stage':'format_check','reported_at':now()}
@@ -79,6 +80,13 @@ def retry(producer,pid,cid,*,actor,key):
             latest=[c for c in commands.values() if c['kind']=='plan'][-1]
             require(latest['command_id']==cid,'STALE_CREATION_PLAN')
         child=deepcopy(source)
+        if source.get('issue')=='NO_MUSICAL_CHANGE':
+            child['instruction'] += ('\n\n上次候选只有规格说明变化，ABC、歌词、style 与源版本完全相同，未产生可渲染修改。'
+                '本次必须在未锁定的生成输入中落实实际变化，不能只改 ARR-SPEC/LYR-SPEC 或 summary。'
+                '唯一强制保留项以任务 preserve 为准：'+', '.join(source.get('preserve',[]))+'。'
+                '源规格中对原稿的描述不是新增锁定。若歌词锁定，可调整未锁定的音符时值、休止、配谱与 style，'
+                '给乐句留下真实空间；同步规格，不宣称已经听过新音频。')
+            text(child['instruction'],4000)
         for field in ('progress','result','result_sha256','provenance','meter_repairs','format_recovery'):
             child.pop(field,None)
         child.update(command_id=new_id('command'),retry_of=cid,state='queued',issue=None,

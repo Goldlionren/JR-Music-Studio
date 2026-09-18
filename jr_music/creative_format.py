@@ -9,6 +9,7 @@ import json
 import re
 
 VERSION='creative-format/1'
+REPAIR_REVISION='eof-closers-2'
 
 
 def canonical(value):
@@ -50,15 +51,23 @@ def check(raw,command,*,lyric_contract=False,finish_reason=None):
     if finish_reason in ('length','max_tokens','content_filter'):raise ValueError('CREATIVE_RESPONSE_TRUNCATED')
     try:value=strict_loads(text)
     except json.JSONDecodeError as error:
+        # Only discard surplus closers after a complete, strictly parsed object.
+        # Prose, another document, duplicate keys and incomplete values stay errors.
+        tail=text[error.pos:].strip()
+        if finish_reason=='stop' and error.msg=='Extra data' and re.fullmatch(r'}{1,4}',tail):
+            value=strict_loads(text[:error.pos])
+            if not isinstance(value,dict):raise ValueError('INVALID_CREATIVE_RESPONSE_JSON') from error
+            operations.append(dict(op='remove_eof_object_closers',count=len(tail)))
         # Only a complete final scalar/object followed by omitted object closers.
         # Never close strings/arrays, fix a comma, guess a value or remove prose.
-        if finish_reason!='stop' or error.pos!=len(text) or not text.endswith('}'):
+        elif finish_reason!='stop' or error.pos!=len(text) or not text.endswith('}'):
             raise ValueError('INVALID_CREATIVE_RESPONSE_JSON') from error
-        for count in range(1,5):
-            try:value=strict_loads(text+'}'*count)
-            except json.JSONDecodeError:continue
-            operations.append(dict(op='append_eof_object_closers',count=count));break
-        else:raise ValueError('INVALID_CREATIVE_RESPONSE_JSON') from error
+        else:
+            for count in range(1,5):
+                try:value=strict_loads(text+'}'*count)
+                except json.JSONDecodeError:continue
+                operations.append(dict(op='append_eof_object_closers',count=count));break
+            else:raise ValueError('INVALID_CREATIVE_RESPONSE_JSON') from error
     before=copy.deepcopy(value)
     expected=expected_fields(command,lyric_contract)
     if not isinstance(value,dict) or set(value)!=expected:raise ValueError('INVALID_CREATIVE_RESPONSE_FIELDS')

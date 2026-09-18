@@ -23,6 +23,17 @@ def measured(start=0,step=4):
 
 
 class MetricsTests(unittest.TestCase):
+    def test_complete_response_with_extra_closer_is_repaired_without_text_changes(self):
+        from jr_music.creative_format import check
+        value=dict(reply='A complete plan',plan={'title':'Example'})
+        raw=json.dumps(value)+'}\n'
+        parsed,report=check(raw,{'kind':'plan'},finish_reason='stop')
+        self.assertEqual(parsed,value)
+        self.assertEqual(report['operations'],[dict(op='remove_eof_object_closers',count=1)])
+        for bad,reason in [(raw,None),(raw,'length'),(json.dumps(value)+' trailing','stop'),
+                           ('{"reply":"a","reply":"b","plan":{}}}','stop')]:
+            with self.assertRaises(ValueError):check(bad,{'kind':'plan'},finish_reason=reason)
+
     def measure(self,asr=None,lines=None,goals=None):
         return q.metrics(LYRICS,asr or {},lines if lines is not None else measured(),goals or q.DEFAULTS,60)
 
@@ -172,6 +183,31 @@ class CycleTests(unittest.TestCase):
         with self.assertRaisesRegex(StoreError,'PRODUCER_REQUIRED'):
             loop.decide(self.producer,self.pid,cycle['cycle_id'],'improved','fake',actor='yinyue',key='fake')
 
+    def test_recovered_original_command_resumes_cycle_without_new_generation(self):
+        cycle=self.start()
+        loop.update(self.producer,self.pid,cycle['cycle_id'],state='needs_attention',issue='INVALID_CREATIVE_RESPONSE_JSON')
+        loop.resume_pending(self.producer,self.pid)
+        self.assertEqual(loop.get(self.producer,self.pid,cycle['cycle_id'])['state'],'revising')
+        self.assertEqual(len(self.producer.list(self.pid)),1)
+
+    def test_explicit_no_change_retry_is_followed_with_original_locks(self):
+        from jr_music.command_status import retry
+        cycle=self.start(preserve=['lyrics'])
+        with self.store.connect() as db:
+            db.execute('BEGIN IMMEDIATE');command=self.producer._get(db,self.pid,cycle['command_id'])
+            command.update(state='needs_attention',issue='NO_MUSICAL_CHANGE')
+            self.producer._save(db,command,'yinyue');db.commit()
+        loop.resume_pending(self.producer,self.pid)
+        self.assertEqual(len(self.producer.list(self.pid)),1)
+        child=retry(self.producer,self.pid,command['command_id'],actor='producer',key='explicit-retry')
+        self.assertEqual(child['preserve'],['lyrics'])
+        self.assertIn('未锁定',child['instruction'])
+        loop.resume_pending(self.producer,self.pid)
+        current=loop.get(self.producer,self.pid,cycle['cycle_id'])
+        self.assertEqual(current['command_id'],child['command_id'])
+        self.assertEqual(current['previous_command_ids'],[command['command_id']])
+        self.assertEqual(current['before_sha256'],cycle['before_sha256'])
+
     def test_local_analysis_completes_without_comfy_or_transcription(self):
         root=Path(self.temp.name);model=root/'data/models/faster-whisper-large-v3-turbo'
         model.mkdir(parents=True);(model/'model.bin').write_bytes(b'fixture')
@@ -204,6 +240,19 @@ class CycleTests(unittest.TestCase):
                 self.assertEqual(report['status'],'queued')
                 self.assertEqual(report['asr']['source_audio_sha256'],asset['sha256'])
                 self.assertEqual(report['asr_command_id'],saved['command_id'])
+                full=aa.folder('command_pending');full.mkdir()
+                aa.write(full/'workflow.api.json',{'fixture':True})
+                history={'prompt_fixture':dict(prompt=[None,None,{'fixture':True}],status=dict(status_str='error'))}
+                def partial_process(*args,**kwargs):
+                    aa.write(full/'asr.json',dict(source_audio_sha256=asset['sha256'],segments=[],measurements=dict(duration=30)))
+                    return SimpleNamespace(returncode=0)
+                with patch.object(aa,'fetch',return_value=history),patch.object(aa.subprocess,'run',side_effect=partial_process):
+                    aa.run(self.producer,self.pid,'command_pending')
+                partial=self.producer.get(self.pid,'command_pending')
+                self.assertEqual(partial['state'],'completed')
+                self.assertEqual(partial['transcription_issue'],'SHEETSAGE_ANALYSIS_FAILED')
+                self.assertNotIn('transcription_sha256',partial)
+                self.assertIn('asr_sha256',partial)
             finally:aa.ACTIVE.discard(c['command_id'])
 
     def test_quality_api_does_not_give_agents_producer_authority(self):

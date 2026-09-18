@@ -283,7 +283,7 @@ def make_console(libraries, port=8767, agent_status=None):
                 self.json(status, dict(ok=False,error=dict(code=exc.code)))
             except (ValueError, TypeError, KeyError):
                 self.json(400, dict(ok=False,error=dict(code='INVALID_REQUEST')))
-            except (BrokenPipeError, ConnectionResetError):
+            except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
                 pass
             except (OSError, sqlite3.Error):
                 self.json(503, dict(ok=False,error=dict(code='SERVICE_UNAVAILABLE')))
