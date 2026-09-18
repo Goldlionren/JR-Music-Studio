@@ -13,6 +13,7 @@
 - 银月、小舞两个 Hermes 身份；任务阶段、实际模型回执、创作 JSON 检查与有限格式恢复。
 - 从 Hermes 读取 MCP 列表，选择服务器及每位 agent 默认值；已提交任务固定目标。
 - 29 个编曲与 18 个作词专业技能，冻结每个任务使用的版本。
+- 听感检查与单轮修订：按 Terry 方法核对歌词负荷、前奏目标、结尾和段落发展，生成新候选后自动复测，再由制作人试听记录结论。
 
 乐谱和 MIDI/MusicXML 表示保存的创作输入，**不保证与 YuE2 实唱逐音一致**。300 秒是上限，长度、演唱密度与音乐质量仍需试听确认。这是本地工作台，尚非可直接暴露公网的多用户服务。
 
@@ -48,13 +49,13 @@ python -m jr_music.server serve --console-port 8767 --hermes-config data/hermes-
 
 将 worker 包复制到 Linux Hermes 主机，以 Hermes 自身 Python 环境运行 producer_worker.py；其旁放置私有 client-config.json，参见 [样例](config/client.example.json)。HERMES_BIN 可指定 Hermes CLI。MCP 发现还需受限 SSH key、强制运行 mcp_broker.py，以及预先确认的主机指纹。该 key 仅探测／暂存；实际生成仍使用 Hermes 内官方 MCP。当前暂存支持 SSH→Windows Comfy 主机，HTTP MCP 与自动部署尚待完善。
 
-可选分析依赖 requirements-audio-analysis.txt、SheetSage2 节点／模型和本地 Whisper 模型。当前分析路径主要针对 Windows 本机 ComfyUI，尚未统一多服务器路由；不影响基本管理与谱面导出。
+可选歌词／波形检查依赖 requirements-audio-analysis.txt 和本地 Whisper 模型，在本机 CPU 上执行；转谱另需 SheetSage2 节点／模型。转谱路径主要针对 Windows 本机 ComfyUI，尚未统一多服务器路由。检查显示证据与可调目标，不把 ASR 字速当作说唱分类，也不自动判定音乐质量或采用候选。
 
 ## Suno 与后续方向
 
 系统**具备扩展对接 Suno 的基础与可行性**：词曲意图和 ARR-SPEC / LYR-SPEC 可映射不同后端，[上游编曲技能](https://github.com/jtydhr88/music-composition-skills) 也有 Suno 输出指导。**当前没有 Suno 生产调用适配器**；鉴权、调用方式、费用、异步回执和归档需独立接入。
 
-后续重点：自动听感质量检查、独立 Critic 驱动的有预算修订、个人审美验证、谱与实唱精确对齐、更多 MCP 兼容及安装运维产品化。完整 DAW／滚动钢琴优先使用外部软件。
+后续重点：听感检测的声学标定、独立 Critic 驱动的有预算多轮修订、个人审美验证、谱与实唱精确对齐、更多 MCP 兼容及安装运维产品化。完整 DAW／滚动钢琴优先使用外部软件。
 
 ## 测试
 

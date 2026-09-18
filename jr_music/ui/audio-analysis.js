@@ -3,12 +3,15 @@ const AudioAnalysis=(()=>{
   let cleanup=()=>{};
   const drafts=new Map();
   function mount({root,render,audioUrl,agents,get,post,esc,refresh,direct,error}){
-    cleanup();let disposed=false,timer;cleanup=()=>{disposed=true;clearTimeout(timer);};
+    cleanup();let disposed=false,timer,qualityCleanup=()=>{};cleanup=()=>{disposed=true;clearTimeout(timer);qualityCleanup();};
     if(!render||!audioUrl){root.innerHTML='';return;}
     root.innerHTML=`<details><summary>实际演唱 · 歌词时间线与歌曲检查</summary><p class="hint">按这次音频识别歌词并估计时间。识别可能漏字或误识别；可手动校正，输入乐谱的时间不作为实唱时间。</p>
       <div class="analysis-actions"><select class="analysis-agent" aria-label="分析执行伙伴">${(agents||[]).map(a=>`<option value="${esc(a)}">${a==='yinyue'?'银月':'小舞'}</option>`).join('')}</select><button class="analysis-start" ${agents?.length?'':'disabled'}>分析这次音频</button><button class="analysis-refresh">更新分析结果</button><button class="analysis-resume" hidden>继续核对 / 识别</button></div>
       <p class="analysis-status" role="status"></p><audio class="aligned-audio" controls preload="metadata" src="${esc(audioUrl)}"></audio><div class="audio-waveform"></div><div class="lyric-times"></div><div class="song-checks"></div><details><summary>识别原文与证据</summary><pre class="asr-evidence"></pre></details></details>`;
     const find=q=>root.querySelector(q),audio=find('audio'),status=find('.analysis-status');
+    const qualityRoot=document.createElement('div');qualityRoot.className='quality-panel';find('.lyric-times').before(qualityRoot);
+    qualityCleanup=QualityPanel.mount({root:qualityRoot,render,agents,get,post,esc,error,refresh,onAnalysisUpdate:()=>load(),
+      seek:t=>{audio.currentTime=t;audio.play().catch(()=>{});}});
     let timeline,analysis;
     async function checks(){
       const report=await get('/song-check');if(disposed)return;
@@ -48,8 +51,9 @@ const AudioAnalysis=(()=>{
         analysis=report;timeline=times;
         const labels={not_analyzed:'尚未分析',preparing:'准备音频',queued:'等待音乐伙伴',working:'通过 Comfy MCP 提交转谱',analyzing:'核对转谱并识别歌词',completed:'分析完成',needs_attention:'分析需要处理',cancelled:'分析已撤回'};
         status.textContent=(labels[report.status]||report.status)+(report.status==='completed'&&report.asr?` · 整段 ${report.asr.measurements.duration.toFixed(1)} 秒已分析`:report.status==='analyzing'?report.stage==='recognizing_lyrics'?' · 本机识别歌词':' · 等待转谱结果':'')+(report.status!=='completed'&&report.progress?` · 已识别至 ${report.progress.through_seconds.toFixed(1)} 秒`:'')+(report.issue?' · '+error({message:report.issue}):'');
-        find('.analysis-start').disabled=(report.status!=='not_analyzed'&&!report.can_restart)||!agents?.length;
-        find('.analysis-start').textContent=report.can_restart?'重新准备并分析':'分析这次音频';
+        const canAddTranscription=report.analysis_mode==='lyrics'&&report.status==='completed';
+        find('.analysis-start').disabled=(report.status!=='not_analyzed'&&!report.can_restart&&!canAddTranscription)||!agents?.length;
+        find('.analysis-start').textContent=canAddTranscription?'追加旋律转谱':report.can_restart?'重新准备并分析':'分析这次音频';
         find('.analysis-resume').hidden=!report.can_resume;
         drawLines();
         const asr=report.asr;

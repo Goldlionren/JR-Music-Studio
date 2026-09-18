@@ -1147,3 +1147,13 @@ dialog::backdrop {
 
 #scoreLyricEditor label{display:block;margin:10px 0}#scoreLyricEditor select{max-width:100%;width:100%}.mapping-range{display:grid;grid-template-columns:1fr 1fr;gap:12px}.mapping-unit{display:grid;grid-template-columns:1fr 1.5fr 1.5fr auto;gap:8px;align-items:end}.mapping-unit input{width:100%;box-sizing:border-box}.mapping-unit label{min-width:0}.score-lyric-units{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}.score-lyric-units span{background:#eef1e5;padding:7px;border-radius:6px}.score-lyric-units small{display:block;color:#727965;font-size:11px}@media(max-width:850px){.mapping-range{grid-template-columns:1fr}.mapping-unit{grid-template-columns:1fr 1fr}}
 .production-specs{margin:12px 0}.production-specs pre{max-height:480px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.6}
+
+.quality-panel { border-top:1px solid #dbe0d0; margin-top:24px; padding-top:18px; }
+.quality-policy input[type=number] { max-width:140px; }
+.quality-policy label { display:inline-flex; flex-direction:column; gap:6px; margin:8px 16px 8px 0; }
+.quality-submit fieldset { display:flex; gap:12px; flex-wrap:wrap; margin:16px 0; }
+.quality-submit fieldset label { display:flex; align-items:center; gap:6px; }
+.quality-observations a { font-size:12px; }
+.quality-comparison { width:100%; border-collapse:collapse; font-size:13px; }
+.quality-comparison th,.quality-comparison td { padding:8px; text-align:left; border-bottom:1px solid #dbe0d0; }
+.quality-message { color:#556a3f; }

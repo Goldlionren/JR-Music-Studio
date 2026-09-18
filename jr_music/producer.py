@@ -218,8 +218,12 @@ class ProducerService:
                     command.update(state='needs_attention', issue=job['state'])
                 # Refresh observes only. Never issue another submission permission.
             return self._save(db, command, actor)
-        return self.store._operation(actor, key, dict(op='producer_command_'+action, project_id=project_id,
+        result = self.store._operation(actor, key, dict(op='producer_command_'+action, project_id=project_id,
             command_id=command_id, issue=issue), change)
+        if result['state']=='completed':
+            from .quality_loop import resume_pending
+            resume_pending(self,project_id)
+        return result
 
     def feedback(self, project_id, revision_id, render_id, content, *, actor, key):
         text(content, 4000)

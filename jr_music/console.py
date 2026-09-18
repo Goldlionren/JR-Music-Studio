@@ -192,6 +192,9 @@ def make_console(libraries, port=8767, agent_status=None):
                                 self.wfile.write(raw);return
                             elif len(parts) == 5 and parts[3] == 'audio' and method == 'GET':
                                 self.media(store, pid, parts[4]); return
+                            elif len(parts)==6 and parts[3]=='renders' and parts[5].startswith('quality'):
+                                from .quality_loop import route
+                                result=route(producer,pid,parts[4],parts[5],method,self.body,actor='producer')
                             elif len(parts) == 6 and parts[3] == 'renders' and parts[5]=='song-check':
                                 from . import song_check
                                 if method=='GET':result=song_check.read(producer,pid,parts[4])
@@ -267,6 +270,7 @@ def make_console(libraries, port=8767, agent_status=None):
                 require(method == 'GET', 'INVALID_ROUTE')
                 files = {'/': 'index.html', '/app.js':'app.js', '/score-review.js':'score-review.js', '/manual-editor.js':'manual-editor.js', '/style.css':'style.css', '/vendor/abcjs-basic-min.js':'vendor/abcjs-basic-min.js'}
                 files['/audio-analysis.js']='audio-analysis.js'
+                files['/quality.js']='quality.js'
                 files['/score-lyrics.js']='score-lyrics.js'
                 require(path in files, 'INVALID_ROUTE')
                 target = UI / files[path]
