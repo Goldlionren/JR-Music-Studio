@@ -97,6 +97,7 @@ const messages = {
   SECTION_SCOPE_VIOLATION: "回复超出了所选段落范围，未替换来源版本。",
   TIMEOUTEXPIRED: "模型超过 8 分钟仍未完成，任务已停止。可重试一次或缩小修改范围。",
   INVALID_CREATIVE_RESPONSE_JSON: "回复格式未通过，原始回复已保存。可先检查原回复并继续；这不会重新创作。",
+  HERMES_FILE_READ_HALTED: "Hermes 连续读取文件失败，已停止创作，尚未生成音频。请核对任务的技能文件路径；修正后点「重新尝试」。这不是可修复的词曲 JSON。",
   INVALID_CREATIVE_RESPONSE_FIELDS: "模型回复缺少必要字段或带有额外字段，可重新尝试。",
   MODEL_INTERRUPTED_REVIEW_REQUIRED: "模型执行中断且没有完整结果，可手动重新尝试。",
   RETRY_REQUIRES_RECONCILIATION: "该任务可能已有产物或正在生成，请先核对进度，不能直接重投。",

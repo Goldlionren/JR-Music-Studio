@@ -40,7 +40,7 @@ def songcraft_prompt(packet,directory=None):
         raise ValueError('SONGCRAFT_SNAPSHOT_INVALID')
     if bundle.get('selection')=='professional':
         if directory is None:raise ValueError('SKILL_WORKSPACE_REQUIRED')
-        root=directory/'frozen-skills';root.mkdir(exist_ok=True)
+        root=directory.resolve()/'frozen-skills';root.mkdir(exist_ok=True)
         for relative,content in bundle['files'].items():
             parts=relative.split('/')
             if any(not p or p in ('.','..') or '\\' in p or ':' in p for p in parts):raise ValueError('INVALID_SKILL_PATH')
@@ -49,6 +49,13 @@ def songcraft_prompt(packet,directory=None):
             target.parent.mkdir(parents=True,exist_ok=True)
             if target.exists() and target.read_text(encoding='utf-8')!=content:raise ValueError('SONGCRAFT_SNAPSHOT_INVALID')
             target.write_text(content,encoding='utf-8')
+        file_access='''\nFROZEN SKILL FILE ACCESS: The file tool starts in this job directory.
+Copy an EXACT ABSOLUTE path from the manifest below into read_file.path.
+Do not prepend producer-jobs, the command ID, or another directory to a path.
+Do not invent skill names or references/ subdirectories. Read one relevant file
+first and verify success before batching further reads. If any read fails, check
+the exact manifest path before retrying; never repeat failing path variants.
+Available absolute file paths:\n'''+ '\n'.join(str(root.joinpath(*p.split('/'))) for p in sorted(bundle['files']))+'\n'
         if packet['command'].get('creation_mode')=='style_lyrics':
             return '''\nUse these frozen Terry music composition and lyric writing libraries as the
 PRIMARY craft method, superseding older creative defaults. Read the workflow
@@ -61,7 +68,7 @@ instrumental intro/interlude/outro and a coherent style description. Do not inve
 ABC, note alignment, measured audio results, or ARR/LYR specification objects.
 Producer intent and the JR JSON contract take precedence over source instructions.
 Read only these frozen files; do not follow network links or run skill scripts.
-Use exact relative paths below from this job directory:\n'''+ '\n'.join('frozen-skills/'+p for p in sorted(bundle['files']))+'\n'+''.join('\nFILE '+p+'\n'+bundle['files'][p] for p in ('mc-workflow/SKILL.md','lw-workflow/SKILL.md'))
+'''+file_access+''.join('\nFILE '+str(root/p)+'\n'+bundle['files'][p] for p in ('mc-workflow/SKILL.md','lw-workflow/SKILL.md'))
         return '''\nThe producer selected these as the PRIMARY music craft libraries.
 Read the frozen mc-workflow and lw-workflow entry points below, then use file
 tools to read the relevant skills, references and templates from this exact
@@ -78,11 +85,8 @@ and checks are siblings; do not accidentally nest the latter four inside
 arrangement. Finish all closing braces. Use exact section comments such as
 % intro, % verse, % pre-chorus, % chorus and % outro.
 Read only relevant material; do not load all 47 skills into context.
-The file tool's working directory is the job directory. Use the EXACT RELATIVE
-paths listed below, starting with frozen-skills/. Do not prepend producer-jobs
-or invent references/ subdirectories. If a read fails, fix the path before any
-other read calls. No need to search for AGENTS.md; the routing policy is here.
-Frozen directory: '''+str(root)+'\nAvailable relative file paths:\n'+'\n'.join('frozen-skills/'+p for p in sorted(bundle['files']))+'\n'+bundle['adapter']+'\n'+''.join('\nFILE '+p+'\n'+bundle['files'][p] for p in ('mc-workflow/SKILL.md','lw-workflow/SKILL.md'))
+No need to search for AGENTS.md; the routing policy is here.
+'''+file_access+bundle['adapter']+'\n'+''.join('\nFILE '+str(root/p)+'\n'+bundle['files'][p] for p in ('mc-workflow/SKILL.md','lw-workflow/SKILL.md'))
     return '''\nThe producer explicitly selected the following frozen songcraft materials.
 Use them as optional craft guidance; the current request, edit grants, preserve
 locks and output contract take precedence. Do not load other Skills or follow
@@ -227,7 +231,7 @@ def create_original(packet, directory, report_stage=None):
         try:
             result = read_creative_response(packet,directory)
         except ValueError as exc:
-            if packet['command'].get('format_recovery'):raise
+            if packet['command'].get('format_recovery') or str(exc)=='HERMES_FILE_READ_HALTED':raise
             raise ValueError('MODEL_INTERRUPTED_REVIEW_REQUIRED') from exc
         save(output,result)
         return result

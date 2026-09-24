@@ -47,6 +47,8 @@ def check(raw,command,*,lyric_contract=False,finish_reason=None):
     if text.startswith('API call failed'):
         raise ValueError('HERMES_PROVIDER_TIMEOUT' if 'timed out' in text else 'HERMES_PROCESS_FAILED')
     text=re.sub(r'^\s*⟳ compacting context…\s*\n','',text,flags=re.M).strip()
+    if text.startswith('I stopped retrying read_file because it hit the tool-call guardrail (same_tool_failure_halt)'):
+        raise ValueError('HERMES_FILE_READ_HALTED')
     fenced=re.fullmatch(r'```(?:json)?\s*\n(.*)\n```',text,re.S)
     if fenced:text=fenced[1]
     if finish_reason in ('length','max_tokens','content_filter'):raise ValueError('CREATIVE_RESPONSE_TRUNCATED')
