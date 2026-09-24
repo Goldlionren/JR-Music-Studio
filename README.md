@@ -21,6 +21,10 @@
 
 ## 快速开始
 
+第一次使用？先看 **[中文图文新手攻略](guides/zh-CN/JR_Music_Studio_Beginner_Guide_CN.html)**，从新建歌曲、讨论方案到试听、修订与乐谱导出，附 13 张操作截图。
+
+GitHub 文件页显示的是 HTML 源码。点击右上方 **Download raw file（下载原始文件）**，保存后用浏览器打开即可阅读；图片已嵌入，无需额外下载。更多说明见 [公开攻略目录](guides/README.md)。
+
 需要 Python 3.13；音频生成与核验还需 FFmpeg / FFprobe、Hermes、官方 Comfy CLI / MCP、ComfyUI 及匹配的 YuE2 节点与模型。账号、模型与服务器权限不包含在仓库中。
 
 ```bash
@@ -82,4 +86,4 @@ python -m unittest discover -s tests -v
 
 第三方组件遵循各自许可，见 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)。JR 的 MIT 不改变外部服务条款、模型许可或歌曲素材权利。
 
-本仓库发布应用代码、运行资源和公开测试。设计说明、Low Level Design 文档、用户／维护手册、个人作品、实验、个人审美资料及部署凭据不随仓库发布。
+本仓库发布应用代码、运行资源、公开测试，以及 guides/ 下单独授权公开的新手攻略（含示例截图）。内部设计说明、Low Level Design 文档、内部用户／维护手册、其他个人作品、实验、个人审美资料及部署凭据不随仓库发布。
