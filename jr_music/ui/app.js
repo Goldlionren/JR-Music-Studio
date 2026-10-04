@@ -258,6 +258,17 @@ function currentRender(r) {
     done.at(-1)
   );
 }
+function renderSeed(job) {
+  // Keep archived decimal strings intact, including integers beyond JS precision.
+  const saved = job?.seed_decimal;
+  if (typeof saved === 'string' && /^(0|[1-9][0-9]*)$/.test(saved)) return saved;
+  const value = job?.parameters?.seed;
+  return Number.isSafeInteger(value) && value >= 0 ? String(value) : null;
+}
+function renderRecordLink(job) {
+  return job?.assets?.some(a => a.name === 'render-manifest.json' && a.verification === 'server_generated')
+    ? `<a href="${route('/renders/'+job.render_id+'/manifest')}" download>生成记录 JSON ↓</a>` : '';
+}
 function date(value) {
   return new Date(value).toLocaleString("zh-CN", {
     month: "2-digit",
@@ -434,7 +445,7 @@ function cards() {
                 )
                 .join("")}</select>`
             : ""
-        }<div class="card-actions"><button class="view">${rid === state.focus ? "正在查看" : "查看 / 指挥"}</button><button class="accept" ${!j ? "disabled" : ""}>Accept</button><button class="reject">Reject</button></div></div></article>`;
+        }${j ? `<div class="hint render-seed">本次生成种子：<code>${esc(renderSeed(j) ?? '历史记录未保存')}</code> ${renderSeed(j) !== null ? `<button class="copy-seed" data-seed="${esc(renderSeed(j))}" aria-label="复制 ${esc(label(rid))} 的生成种子">复制种子</button>` : ''}<br>${renderRecordLink(j)}</div>` : ''}<div class="card-actions"><button class="view">${rid === state.focus ? "正在查看" : "查看 / 指挥"}</button><button class="accept" ${!j ? "disabled" : ""}>Accept</button><button class="reject">Reject</button></div></div></article>`;
       })
       .join("") +
     Array.from(
@@ -446,6 +457,11 @@ function cards() {
     .querySelectorAll(".candidate")
     .forEach((card) => {
       const rid = card.dataset.rid;
+      const copySeed = card.querySelector('.copy-seed');
+      if (copySeed) copySeed.onclick = async () => {
+        try { await navigator.clipboard.writeText(copySeed.dataset.seed); notify('已复制本次生成种子'); }
+        catch { notify('复制失败，可直接选中种子文字复制。'); }
+      };
       card.querySelector(".view").onclick = () => focus(rid);
       card.querySelector(".accept").onclick = () => decision("accept", rid);
       card.querySelector(".reject").onclick = () => decision("reject", rid);
@@ -624,6 +640,8 @@ function workbench() {
         `<div class="lyrics-column"><h3>${esc(label(id))}${id === state.focus ? " · 当前" : ""}</h3><p>${esc(candidate(id).snapshot.brief.lyrics)}</p></div>`,
     )
     .join("");
+  const selectedRender = currentRender(r);
+  const selectedSeed = renderSeed(selectedRender);
   const meta = {
     "版本 ID": r.revision.revision_id,
     来源版本: r.revision.parent_revision_id
@@ -640,12 +658,20 @@ function workbench() {
         .join("；") || "此版本没有受保护编辑清单",
     风格: r.snapshot.brief.style,
     时长上限: r.snapshot.brief.max_duration + " 秒",
-    随机种子: r.snapshot.brief.seed,
+    候选输入种子: Number.isSafeInteger(r.snapshot.brief.seed) ? String(r.snapshot.brief.seed) : '请查看原始生成记录',
+    本次生成种子: selectedRender ? selectedSeed ?? '历史记录未保存' : '尚无已归档生成',
+    本次生成时间: selectedRender ? date(selectedRender.created_at) : '—',
+    本次生成ID: selectedRender?.render_id || '—',
+    本次生成模型: selectedRender?.checkpoint?.name || selectedRender?.parameters?.checkpoint || '—',
+    模型文件SHA256: selectedRender?.checkpoint?.sha256 || '历史记录未保存',
+    工作流SHA256: selectedRender?.workflow_sha256 || '历史记录未保存',
+    运行环境记录: selectedRender?.environment_sha256 ? '已归档，见生成记录 JSON' : '历史环境信息不完整',
     "快照 SHA": r.revision.snapshot_sha256,
   };
   $("metadata").innerHTML = Object.entries(meta)
     .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`)
     .join("");
+  $("renderRecord").innerHTML = `${renderRecordLink(selectedRender)}<p class="hint">生成记录对应当前所选音频，包含当时的种子、完整工作流、输入及已记录的模型和环境信息。它是复现参考，不是自动导入包。相同种子不保证百分之百相同音频：还需相同歌词、style、ABC／规划方式、采样参数、模型文件、软件与硬件环境。要完整保留这一版，请同时下载原始 WAV。记录含歌词和本机路径，分享前请检查。</p>`;
   bars();
   ScoreLyrics.mount({root:$("scoreLyricEditor"),revision:r,esc,error:errorText,selected:()=>state.bars,
     save:async rows=>{

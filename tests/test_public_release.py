@@ -1,12 +1,14 @@
 """Portable regression checks using synthetic content and no deployment secrets."""
 import json
+import io
 from pathlib import Path
 import struct
 import tempfile
 import threading
 import unittest
 from unittest.mock import patch
-from urllib.request import urlopen
+from urllib.request import urlopen, Request, build_opener, ProxyHandler
+from urllib.error import HTTPError
 import xml.etree.ElementTree as ET
 
 from jr_music.store import Store, StoreError, canonical, sha
@@ -23,6 +25,41 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class PublicReleaseTests(unittest.TestCase):
+    def test_archived_render_manifest_download_is_exact_and_project_scoped(self):
+        revision=self.add();service=RenderService(self.store)
+        job=service.prepare(self.pid,revision['revision_id'],actor='producer',key='manifest')
+        # Synthetic archive: exercise download, not GPU execution.
+        raw=canonical(dict(seed_decimal='18446744073709551615',render_id=job['render_id'],
+            workflow={'165':{'class_type':'SeedNode','inputs':{'seed':18446744073709551615}}}))
+        with self.store.cas.stage(io.BytesIO(raw)) as staged:
+            with self.store.connect() as db:
+                db.execute('BEGIN IMMEDIATE')
+                asset=self.store.file_asset(db,self.pid,revision['revision_id'],staged,'render-manifest.json','application/json','server_generated')
+                job.update(state='succeeded',assets=[asset])
+                db.execute('UPDATE render_jobs SET document=? WHERE id=?',(canonical(job),job['render_id']));db.commit()
+        other=self.store.create_project('Other',actor='producer',key='other')['project_id']
+        before=len(self.store.events(self.pid))
+        server=make_console({'studio':('Studio',self.store,None)},port=0)
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        opener=build_opener(ProxyHandler({}));base=f'http://127.0.0.1:{server.server_port}'
+        path=f'/api/studio/projects/{self.pid}/renders/{job["render_id"]}/manifest'
+        try:
+            with self.assertRaises(HTTPError) as error:opener.open(base+path)
+            self.assertEqual(error.exception.code,403)
+            with opener.open(base+'/api/session') as response:cookie=response.headers['Set-Cookie'].split(';')[0]
+            with opener.open(Request(base+path,headers={'Cookie':cookie})) as response:
+                self.assertEqual(response.read(),raw)
+                self.assertIn(job['render_id']+'-manifest.json',response.headers['Content-Disposition'])
+                self.assertEqual(response.headers['Content-Type'],'application/json')
+            with self.assertRaises(HTTPError):opener.open(Request(base+path.replace(self.pid,other),headers={'Cookie':cookie}))
+            with self.store.connect() as db:
+                job['assets']=[]
+                db.execute('UPDATE render_jobs SET document=? WHERE id=?',(canonical(job),job['render_id']));db.commit()
+            with self.assertRaises(HTTPError) as error:opener.open(Request(base+path,headers={'Cookie':cookie}))
+            self.assertEqual(json.load(error.exception)['error']['code'],'RENDER_MANIFEST_UNAVAILABLE')
+            self.assertEqual(len(self.store.events(self.pid)),before)
+        finally:server.shutdown();server.server_close();thread.join()
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

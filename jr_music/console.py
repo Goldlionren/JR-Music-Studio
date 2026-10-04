@@ -209,6 +209,19 @@ def make_console(libraries, port=8767, agent_status=None):
                                     format_check=formats.get(c['command_id'])) for c in producer.list(pid)]
                                 result = dict(project=store.get_project(pid), revisions=revisions, commands=commands,
                                     decisions=decisions, historical_feedback=historical_feedback, events=store.events(pid), agents=list(bridge.bindings) if bridge else [])
+                            elif len(parts)==6 and parts[3]=='renders' and parts[5]=='manifest' and method=='GET':
+                                job=producer.renders.get(pid,parts[4])
+                                require(job['state']=='succeeded','RENDER_STATE_CONFLICT')
+                                record=next((a for a in job.get('assets',[]) if a['name']=='render-manifest.json'),None)
+                                require(record is not None,'RENDER_MANIFEST_UNAVAILABLE')
+                                asset,stream=store.open_asset(pid,record['asset_id'])
+                                with stream:
+                                    require(asset['verification']=='server_generated' and asset['media_type']=='application/json'
+                                        and asset['revision_id']==job['revision_id'] and asset['name']=='render-manifest.json','RENDER_MANIFEST_UNAVAILABLE')
+                                    self.headers_out(200,'application/json',asset['size'],
+                                        [('Content-Disposition',f'attachment; filename="{job["render_id"]}-manifest.json"')])
+                                    while chunk:=stream.read(256*1024):self.wfile.write(chunk)
+                                return
                             elif len(parts)==6 and parts[3]=='revisions' and parts[5].startswith('score.') and method=='GET':
                                 raw,media,disposition=score_export.download(store,pid,parts[4],parts[5][6:])
                                 self.headers_out(200,media,len(raw),[('Content-Disposition',disposition)])
